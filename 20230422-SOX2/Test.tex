@@ -1,0 +1,241 @@
+\documentclass[11pt]{beamer}
+
+% \setbeamersize{text margin left=5mm, text margin right=5mm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%   Options for notes   %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% \setbeamertemplate{note page}[plain]
+% \setbeameroption{show notes}
+% \setbeameroption{show notes on second screen}
+%\setbeameroption{show only notes}
+% \setbeameroption{show only slides with notes}
+
+\input{preamble}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%     presenter info    %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\author[Xinda GE]{
+Xinda GE\\
+\small PhD year 1 \\ Mentor: Stephen Dalton
+}
+\title[SOX2 in hESC by Degron system]{
+How SOX2 as a pioneer factor to initiate ESCs differentiation}
+
+% \subtitle{
+% Mentor: Dalton
+% }
+\institute[Dalton Lab]{
+Dalton Lab,\\
+School of Biomedical Sciences
+}
+\date{\advanceday[1]}
+
+
+\begin{document}
+
+% \kaishu
+\begin{frame}
+    \titlepage
+    \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=0.1\linewidth]{pic/CUHKSZ-Logo.png}
+        \end{center}
+    \end{figure}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%% Contents Start %%%%%%%%%%%%%%%%%%%%%%
+\section{Background}
+
+\begin{frame}{Why SOX2 might be essential for ESCs differentiation}  
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=1.0\textwidth]{20230422-SOX2/figs/background.pdf}
+        %caption{Approaches to clear protein molecules inside the nucleus of a cell}
+        %label{fig:ubprocess}
+    \end{figure}
+    
+    \begin{itemize}
+        \item SOX2 is engaged with the three germ layers' differentiation.
+    \end{itemize}
+    
+\end{frame}
+
+
+% \note[enumerate]{
+%     \item ICM cells derived from the Blastoid has several potentials to differentiate into 3 germ layers, en,me, ec. 
+%     \item Of notes, OCT4, SOX2 and Nanog as 3 key transcription factors are essential for the pluripotency state.
+%     \item Here is an image to show the Chip-seq result which reflects the TF binding frequency onto the target motif. 
+%     \item 
+% }
+
+\section{Method}
+
+\begin{frame}{Inducible KO strategies of a targeted protein in nucleus}  
+    % \begin{itemize}
+    %     \item 
+    % \end{itemize}
+    \begin{columns}
+        \column{0.6\textwidth}
+        \begin{figure}
+            \centering
+            \includegraphics[width=\textwidth]{20230422-SOX2/figs/xinda.drawio.pdf}
+            %caption{Approaches to clear protein molecules inside the nucleus of a cell}
+            %label{fig:ubprocess}
+        \end{figure}
+        \column{0.4\textwidth}
+        
+        Advantages of degron system
+        % {\small
+        \begin{itemize}
+            \item without disrupting pl-uripotency
+            \item accurately on-target
+            \item reversible
+            \item rapid 
+            \item $\cdots$
+        \end{itemize}
+        % }
+    \end{columns}
+\end{frame}
+
+
+
+
+\begin{frame}{What are needed to create a Degron cell line?}  
+    % \begin{itemize}
+    %     \item 
+    % \end{itemize}
+        
+    \begin{figure}
+        \centering
+        \includegraphics[width=\textwidth]{20230422-SOX2/figs/howdegron.pdf}
+        %caption{AID system mechanism}
+        %label{fig:mechanisms}
+    \end{figure}
+
+    \begin{itemize}
+        \item The key components include \textbf{TIR1}, \textbf{AID tag}, and \textbf{auxin}.
+        \item The advantages of degron system are confirmed.
+    \end{itemize}
+\end{frame}
+
+
+
+
+\section{Experiment Design}
+
+\subsection{AID-tag onto SOX2 + Validation}
+
+\begin{frame}{1. Tag SOX2 with AID of Degron system by CRISPR/Cas9}  
+    % \begin{itemize}
+    %     \item  
+    % \end{itemize}
+        
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth]{20230422-SOX2/figs/design1.pdf}
+        %caption{Gene Editing Process}
+        %label{fig:gene editing}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Insertion validation (Part 1)}  
+    % \begin{itemize}
+    %     \item  
+    % \end{itemize}
+        
+    \begin{figure}
+        \centering
+        \includegraphics[width=\textwidth]{20230422-SOX2/insertvalp1.png}
+        %caption{Gene insertion evidence}
+        %label{fig:gene insertion}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Insertion validation (Part 2)}  
+    % \begin{itemize}
+    %     \item  
+    % \end{itemize}
+        
+    \begin{figure}
+        \centering
+        \includegraphics[width=1.0\textwidth]{20230422-SOX2/figs/insertvalp2.pdf}
+        %caption{Protein expression evidence}
+        %label{fig:gene editing}
+    \end{figure}
+\end{frame}
+
+\subsection{TIR1 into AAVS1 + Validation}
+
+\begin{frame}{2. Safe harbor locus insertion with TIR1}  
+    % \begin{itemize}
+    %     \item  
+    % \end{itemize}
+        
+    \begin{figure}
+        \centering
+        \includegraphics[width=1.0\textwidth]{20230422-SOX2/figs/safeharbor.pdf}
+        %\caption{Gene Editing Process}
+        %label{TIR1 insertion into AAVS1 locus}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Proof-of-concept validation}  
+    \begin{figure}
+        \centering
+        \includegraphics[width=1.0\textwidth]{20230422-SOX2/figs/proofval.png}
+        %\caption{Gene Editing Process}
+        \label{Function validation}
+        \href{/Users/gexinda/Downloads/OneDrive_1_7-30-2023/500nM.avi}{500 nM IAA.avi}\\
+        \href{/Users/gexinda/Downloads/OneDrive_1_7-30-2023/1uM.avi}{1 uM IAA.avi}
+    \end{figure}
+    \begin{itemize}
+        \item Transient transfection Degron2 (2nd generation Degron)
+        (merged images)
+    \end{itemize}
+\end{frame}
+
+\section{Summary}
+\begin{frame}{Summary} 
+ \begin{enumerate}
+       \item SOX2-AID-GFP homozygous cell line is generated;
+       \item SOX2 can be degraded upon Degron2 system;
+       \item We are pending on Degron2 KI to test the function;
+       \item This cell line will be a flexible tools to investigate the function of SOX2 in ESCs differentiation.
+       \end{enumerate}
+\end{frame}
+
+
+
+%%%%%%%%%%%%%%%%%%% Contents End %%%%%%%%%%%%%%%%%%%%%%
+
+%
+% section*{References}
+% \begin{frame}{References}
+%     \footnotesize
+%     \nocite{*}
+%     \bibliography{ref}
+%     \bibliographystyle{abbrv}
+%     % \tiny\bibliographystyle{alpha}
+% \end{frame}
+
+
+\begin{frame}
+    \begin{center}
+        {\huge Acknowledgements}
+        \begin{align*}
+            \text{Prof.}~& \text{Stephen DALTON,} \\
+            \text{Dr.}~& \text{Tianming WU,} \\\\
+            \text{Dr.}~& \text{Dong LI,} \\
+            \text{Ms.}~& \text{Sau Kuen NG,} \\
+            \text{Dr.}~& \text{Angel Yuet Fong KAM,} \\
+            \text{Mr.}~& \text{Hao YU,} \\
+            \text{Miss}~& \text{Kathy SHAM,} \\
+            \text{Mr.}~& \text{Xiaocheng ZHOU}
+        \end{align*}
+    \end{center}
+\end{frame}
+
+\end{document}

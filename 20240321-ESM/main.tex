@@ -1,0 +1,619 @@
+\documentclass[10pt]{beamer}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%   Options for notes   %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% \setbeamertemplate{note page}[plain]
+% \setbeameroption{show notes}
+% \setbeameroption{show notes on second screen}
+% \setbeameroption{show only notes}
+% \setbeameroption{show only slides with notes}
+
+\input{preamble}
+\algnewcommand\algorithmicinitialize{\textbf{initialize: }}
+\algnewcommand{\Initialize}[1]{\State \algorithmicinitialize #1}
+
+%     presenter info    %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\author{
+Speaker: Xiaocheng ZHOU
+}
+\title{
+Antibody efficient evolution
+}
+\subtitle{
+Efficient evolution of human antibodies from general protein language models\cite{hie_efficient_2024}
+}
+\date{\today}
+\institute{
+STAT6040, STA, CUHK
+}
+
+\begin{document}
+
+% \kaishu
+\begin{frame}
+    \titlepage
+    % \begin{figure}[htpb]
+    %     \begin{center}
+    %         \includegraphics[width=0.2\linewidth]{pic/CUHKSZ-Logo.pdf}
+    %     \end{center}
+    % \end{figure}
+\end{frame}
+
+\note[enumerate]{
+    \item Hello everyone. 
+    \item I am going to share a recent paper about general protein language model to speed up the artificial evolution of antibody.
+}{}{}
+
+\begin{frame}{Preface \normalsize --- Publication information}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{20240321-ESM/figs/preface_esm.png}
+    \end{figure}
+\end{frame}
+
+\note[enumerate]{
+    \item This paper is from the department of biochemistry in Stanford University and 
+    \item published on Nature Biotechnology last year, so this paper need some biology knowledge.
+}{}{}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Main contents %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+
+\begin{frame}{Antibody \normalsize --- A brief introduction}
+    \begin{itemize}\small
+        \item \textbf{CDR ({Complementarity-determining region})}: small and highly variable regions, accounting for the antibody's specificity;
+        \item \textbf{Framework region}: the rest parts in variable regions;
+        \item \textbf{Fab ({Fragment antigen-binding})}: part of antibody binding to antigens;
+        \item \textbf{Fc ({Fragment crystallizable})}: tail part of antibody interacting with cell surface receptors or complement system.
+    \end{itemize}
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\linewidth]{20240321-ESM/figs/aa2Ab.pdf}
+        \caption{The processes from AA sequences to antibody structure and
+        a ribbon representation of an intact immunoglobulin (IgG) with PDB ID: \texttt{1igt}\cite{IgG2a1997}}
+        \label{fig:aa2Ab}
+    \end{figure}
+\end{frame}
+
+\note[enumerate]{
+    \item First, let's get to know antibody.
+    \item We have already known that 20 canonical amino acids can make up a peptide, and then be folded and assembled to a functional protein complex, like antibody.
+    \item This is an example from mouse, its PDB ID is 1igt. 
+    \item It is consist of two heavy chains and two light chains, and they are connected by the disuphide bridges.
+    \item Each chain has variable domain and constant domains.
+    \item The variable domains have some small and highly variable regions, named CDR, which accounting for the antibody's specificity to antigen.
+    \item Those head of antibody are called Fab and the rest tail is Fc.
+}
+
+\begin{frame}{Antibody engineering --- \normalsize Evolution searching}
+    To improve the \textbf{fitness of a given antibody} in laboratory,
+    \begin{enumerate}\small
+        \item Random guessing or brute force searching in \textbf{full mutation space} will cause \textcolor{purple}{considerable experimental burden}.
+        % \begin{itemize}
+        %     \item devoting substantial effort to weakly active or non-functional proteins
+        %     \item requiring high throughput to identify variants with improved fitness
+        % \end{itemize}
+        \item Narrowing down to a \textbf{evolutionary plausibility space} might \textbf{enrich the high fitness}, but
+        % \begin{itemize}
+        %     \item The general properties are prerequisites for fitness and function across most proteins.
+        %     \item Identifying plausible mutations could help guide evolution away from invalid regimes.
+        % \end{itemize}
+        % \item \textcolor{purple}{However, the challenges are}
+        \begin{enumerate}
+            \item protein sequences evolution rule are complex, and
+            \item searching space might be still too large to use practically.
+        \end{enumerate}
+    \end{enumerate}    
+
+    \begin{framed}
+        \textbf{Open question}: Whether general evolutionary information is sufficient to enable efficient evolution under specific selection pressures?
+    \end{framed}
+
+
+    \begin{figure}
+        \centering
+        \begin{columns}
+            \column{0.1\linewidth}
+            \column{0.5\linewidth}
+            \centering
+            \includegraphics[width=0.9\linewidth]{20240321-ESM/figs/searchingspaces.pdf}
+            \column{0.3\linewidth}
+            \caption{Narrow a random-guess space to narrow-down \textbf{plausible spaces} with high evolution possibility in (a) or (b)}
+            \label{fig:searchingspaces}
+            \column{0.1\linewidth}
+        \end{columns}
+    \end{figure}
+
+\end{frame}
+
+\note[enumerate]{
+    \item To improve the fitness of a given antibody, we need to search across the feasible space of mutated sequence, which may be very large.
+    \item In nature, the evolution is based on simply random mutation and recombination under specific selection pressure.
+    \item However, the similar approach in laboratory will cause considerable burden due to the tiny ratio of high fitness mutations in full mutational space.
+    \item The intuition is to narrow down the space, such as evolutionary plausibility space, because
+    % \begin{itemize}
+    %     \item certain mutations may cause larger disruptions to secondary or tertiary structures.
+    %     \item particular amino acid must be carefully coordinated to carry out the biological role of a protein, or the protein species will become extinct.
+    %     \item In general, none of these mutations are entirely restricted, but the bias toward maintenance of the existing fold is sufficiently strong to imprint upon the evolutionary process
+    % \end{itemize}
+    \item Identifying evolutionary plausible mutations could help guide evolution away from invalid regimes, thereby enrich the high fitness variants.
+    \item However, the challenges are that protein sequences evolution rule are complex, and searching space might be still too large to be applied practically.
+    \item SO, the \textbf{Open question} is Whether general evolutionary information is sufficient to enable efficient evolution under specific selection pressures?
+}{}
+
+
+
+
+\begin{frame}{Motivating assumptions}
+    Recent \textbf{protein language models (PLM)} are trained on \textbf{millions of natural protein sequences}, which are anticipated to learn \textbf{amino acid patterns in nature}. Assume that
+    \begin{enumerate}\small
+        \item most mutations with high likelihood by PLM would also be evolutionarily plausible, and
+        \item the evolutionarily plausible space that describes nature is narrow enough\footnote{condition in Fig. \ref{fig:searchingspaces}(b)}. 
+    \end{enumerate}
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.5\linewidth]{20240321-ESM/figs/plm_assumptions.pdf}
+        \caption{Assume that the PLMs, trained on large amount of protein sequence deposited so far, can describe the evolution pattern well.}
+        \label{fig:plm_assumptions}
+    \end{figure}
+
+\end{frame}
+
+
+\note[enumerate]{
+    \item Recent protein language models may answer this question.
+    \item They are trained on millions of natural protein sequences, and they are expected to learn the amino acid patterns in nature.
+    \item So, this study assumes that (1) most mutations with high likelihood by PLM would also be evolutionarily plausible, and (2) the evolutionarily plausible space that describes nature is narrow enough.
+}{}
+
+
+\begin{frame}{Overview}
+    This study shows that \textbf{evolutionary information alone can lead to improved fitness under specific selection pressures with high efficiency}.
+    \begin{enumerate}\small
+        \item Evolutionary preferences in residue mutation: \uline{ensembled PLMs pretrained on natural sequences}
+        \item Specific selection pressure to maturation: \uline{stronger binding affinity to a particular antigen}\footnote{Antibodies with high affinity for disease targets have therapeutic potential in clinic.}
+    \end{enumerate}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.95\linewidth]{20240321-ESM/figs/overview.pdf}
+        \caption{The overview of the testing processes. The processes in right block (light green) are the routines for evaluating novel antibodies, where binding affinity is the primary metric}
+        \label{fig:overview}
+    \end{figure}
+\end{frame}
+
+\note[enumerate]{
+    \item To give you an overview of this study, I would like answer the question first
+    \item This study shows evolutionary information alone can lead to improved fitness under specific selection pressures.
+    \item The evolutionary information provided by ensembled pretrained general PLM
+    \item and the specific selection pressure is stronger binding affinity to certain antigens.
+    \item This is the testing processes, and the novelty of this study fall in the sequence design of variable regions, including light chain and heavy chain.
+    \item After that, the DNA sequences of variable regions will be transferred in B cell with plasmid backbond, cloned, transcripted, and translated to antibodies.
+    \item The purified IgGs or Fabs are delivered to be evaluated, where antigen binding affinity is the primary metric due to the therapeutic potential in clinic.
+}{}
+
+
+%----------------------------------------------------------------------------------%
+
+\section{Methods}
+
+\subsection{Pretrained Protein Language Models}
+
+\begin{frame}{Protein Language Models \normalsize --- Transformer Encoder\cite{vaswani_attention_2023}}
+    \begin{columns}
+        \column{0.05\linewidth}
+        \column{0.32\linewidth}
+        \begin{figure}
+            \centering
+            \includegraphics[width=\linewidth]{20240321-ESM/figs/transformer_plm.pdf}
+            \caption{Architecture of Transformer Encoder with input sequence and output probabilities}
+            \label{fig:transformer_plm}
+        \end{figure}
+        \column{0.73\linewidth}
+        \begin{enumerate}\small
+            \item Embedding layer
+            \begin{gather}
+                \bm{x} \in\texttt{Vocab}\triangleq(\{\texttt{special tokens}\}\cup\mathcal{X})^L \\
+                \bm{h}_0 = \texttt{\color{blue}token\_emb}(\bm{x}) + f_\text{pos}(1:L) \in \mathbb{R}^{L\times d}
+            \end{gather}
+            \item Transformer blocks with $H$-head attention, $n=1:N$
+            \begin{align}
+                \mathbf{Q}_{n,h} & = \bm{h}_{n-1}{\color{blue}\mathbf{W}_{Q,n,h}} \quad (\mathbf{K}_{n,h},\mathbf{V}_{n,h} \text{ are similar})\\
+                \bm{a}_{n,h} & = \underbrace{\texttt{softmax}(\mathbf{Q}_{n,h}\mathbf{K}_{n,h}^\mathsf{T}/\sqrt{d})}_\text{attention score}\mathbf{V}_{n,h} \\
+                \bm{a}_n & = \texttt{\color{blue}linear}([\bm{a}_{n,1},\cdots,\bm{a}_{n,H}]) \\
+                \Tilde{\bm{h}}_n & = \texttt{Normalize}(\bm{a}_n + \bm{h}_{n-1}) \\
+                \bm{h}_n & = \texttt{Normalize}(\texttt{\color{blue}FFN}(\Tilde{\bm{h}}_n) + \Tilde{\bm{h}}_n)
+            \end{align}
+            \item Output layer
+            \begin{gather}
+                \hat{\bm{p}}(\bm{X}'\mid\bm{x}) = \texttt{softmax}(\texttt{\color{blue}linear}(\bm{h}_N))\in\mathbb{R}^{L\times|\texttt{Vocab}|}
+            \end{gather}
+        \end{enumerate}
+    \end{columns}
+\end{frame}
+
+\note[enumerate]{
+    \item The architecture of PLM is a intact Transformer encoder but with protein sequences as inputs and the probabilities of each site as outputs.
+    \item Intuitively, it can be viewed as three major parts.
+    \item First, the protein sequence is embedded to a hidden variable through embed layer and positional encoding.
+    \item Then, it be delivered to many transformer blocks with multi-head attention to capture the information globally. You can see the input and output dimension of transformer block is unchanged.
+    \item Last, the final hidden variable are passed to a linear layer and softmax to predict the likelihood of each site and amino acid.
+    \item If you need more technical details, please let me know.
+}{}{}
+
+
+\begin{frame}{Protein Language Models \normalsize --- Model variants\cite{rives_biological_2021}}
+    The six pretrained PLMs are applied in this study, and they have the identical architecture.
+    \begin{itemize}\small
+        \item \textbf{ESM-1b}: pretrained on UniRef50 in 2018
+        \item \textbf{ESM-1v}: a set of 5 models, pretrained on UniRef90 in 2018
+    \end{itemize}
+    \bigskip
+    \begin{table}
+        \scriptsize
+        \centering
+        \begin{tabular}{ccccc}
+            \toprule
+            \#Layers ($N$) & \#Heads ($H$) & Embedding Dim ($d$) & FFN Dim & \#Params \\
+            \midrule
+            33 & 12 & 768 & 3072 & $\sim$236.8M \\
+            \bottomrule
+        \end{tabular}
+        \caption{The hyperparameter setting of ESM-1b and ESM-1v}
+        \label{tab:hyperparameters}
+    \end{table}    
+    \begin{figure}
+        \centering
+        \begin{columns}
+            \column{0.05\linewidth}
+            \column{0.33\linewidth}
+            \centering
+            \includegraphics[width=0.9\linewidth]{20240321-ESM/figs/UniRefoverview.png}
+            
+            \column{0.55\linewidth}
+            % \begin{table}[ht!]
+            \scriptsize
+            \centering
+            \begin{tabular}{cccc}
+                \toprule
+                Database & \#Seq & Threshold & Similarity \\
+                \midrule
+                UniRef50 & $\sim$27M & $\leq 50\%$ & limit to medium \\
+                UniRef90 & $\sim$98M & $\leq 90\%$ & can be high \\
+                \bottomrule
+            \end{tabular}
+            
+            % \caption{Characters of the used databases}
+            % \label{tab:uniref}
+        % \end{table}
+            \column{0.05\linewidth}
+        \end{columns}
+        \caption{The source of UniRef* databases. Similar sequences are clustered to reduce the redundancy and provide comparative interpretation of the natural protein sequences. From https://www.uniprot.org/}
+        \label{fig:UniRefoverview}
+        \end{figure}
+\end{frame}
+
+\note[enumerate]{
+    \item By training on different dataset or random seed, six pretrained PLMs are applied in this study, including 
+    \item ESM-1b trained on UniRef50 of 2018
+    \item ESM-1v trained on UniRef90 of 2018
+    \item These are the hyperparameters in these models
+    \item UniRef50 and UniRef90 are both databases of \textbf{clustered sets of protein sequences} from the UniProt Knowledgebase (UniProtKB) to reduce the redundancy and provide comparative interpretation of the natural protein sequences.
+    \item These are the differences. UniRef90 has larger size but higher similarity between sequences
+}{}
+
+\subsection{PLM-guided evolution processes}
+
+\begin{frame}{PLM-guided sequence design \normalsize --- Single AA substitution (Round 1)}
+    Given a AA sequence $\bm{x}\in\mathcal{X}^L$, 
+    {\footnotesize\begin{align}
+        \mathcal{S}_j & =\left\{(i,x_i'):\frac{p_j(x_i'\mid\bm{x})}{p_j(x_i\mid\bm{x})}>{\color{purple}\alpha},1\leq i\leq L,x_i'\in \mathcal{X}\right\}, j=1,\cdots,M \\
+        f(i,x'_i) & \triangleq \sum_{j} \mathbb{I}_{\{(i,x'_i)\in\mathcal{M}_j\}} \\
+        \mathcal{A} & = \left\{(i,x'_i):f(i,x'_i)\geq {\color{purple}k}, 1\leq i\leq L,x'_i\in\mathcal{X}\right\}
+    \end{align}}
+    \begin{enumerate}\small
+        \item $\mathcal{S}_j$:\textbf{Set of candidate substitutions} preferred by PLM $j$
+        \item $f(i,x'_i)$: \textbf{Voting result} for each candidate by the $M$ models
+        \item $\mathcal{A}$: \textbf{Set of nominated substitutions} consistent across the models
+    \end{enumerate}
+    \medskip
+    For antibody, there are two sequences ($V_H$ and $V_L$) determining antigen affinity.
+    increase ${\color{purple}k}$ (roughly) and ${\color{purple}\alpha}$ (finely) to produce a small number of nominees 
+    for each antibody ($|\mathcal{A}_{V_H}\cup \mathcal{A}_{V_L}|\sim 10$).\footnote{feasible for screening via low-throughput assays}
+\end{frame}
+
+\note[enumerate]{
+    \item After obtaining models, let see the strategy of antibody artificial evolution at single site.
+    \item First, we exam the likelihood ratio greater for each site and each amino acid to form set of candidate substitutions preferred by each model
+    \item Second, summarize the voting result for each candidate by all models
+    \item Finally, set a vote threshold $k$ to obtain the nominated substitutions
+    \item For antibody, the above final set includes two chains' substitutions and limits the size to be about 10 by adjusting k and alpha, in favor of subsequent low-thoughput testing.
+}{}{}
+
+
+\begin{frame}{PLM-guided sequence design \normalsize --- Multiple AAs substitutions (Round 2)}
+    Those \textbf{variants with enhanced affinity}\footnote{measured by Bio-Layer Immobilization (BLI) binding experiments given its target antigen, mechanism shown in Fig. (\ref{fig:BLI_data}) of Appendix} were recombined
+    such that the second-round variants have \textbf{two or more substitutions} from wild-type.
+    \begin{itemize}\small
+        \item Small amount improved variants from Round 1: all combinations
+        \item Large amount improved variants from Round 1: manually selected combinations of the selected set of most improved variants
+    \end{itemize}
+    \bigskip
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\linewidth]{20240321-ESM/figs/round2.pdf}
+        \caption{Variant recombination for Round 2 screening}
+        \label{fig:round2}
+    \end{figure}
+\end{frame}
+
+\note[enumerate]{
+    \item Those variants with enhanced affinity were recombined to form variants with more substitutions.
+    \item For large amount improved variants from Round 1, those with the highest affinity are selected for manually combination.
+}{}{}
+
+
+\subsection{Materials \& Assays}
+
+\begin{frame}{Involved IgGs \normalsize --- Clinically relevant examples (matured/unmatured)}
+    This study focuses on viral antigens given the importance of antibody therapeutics for viral diseases.
+    \bigskip
+    \begin{table}[H]
+        \small
+        \centering
+        \begin{tabular}{lll}
+            \toprule
+            antybody ID               & permission\footnote{clinical using permission by FDA}    & antigen source \\
+            \midrule
+            \texttt{MEDI8852}         & clinical  & influenza A virus \\ %influenza groups 1\&2 HAs\footnote{HA: hemagglutin} \\
+            \texttt{MEDI8852 UCA}\footnote{UCA: unmutated common ancestor}     & -             & influenza A virus \\ %influenza group 1 HAs \\
+            \texttt{mAb114}           & clinical  & ebolavirus \\ % ebolavirus GP\footnote{GP: glycoprotein} \\
+            \texttt{mAb114 UCA}       & -             & ebolavirus \\ % GP \\
+            \texttt{S309}             & emergency & SARS-CoV-1/2 \\ % Spike GP \\
+            \texttt{REGN10987}        & emergency & SARS-CoV-2 \\ % Spike \\
+            \texttt{C143}             & -             & SARS-CoV-2 Wuhan-Hu-1 \\ % Spike \\
+            \bottomrule
+        \end{tabular}
+        \caption{Wild-type antibody examples analyzed in this study}
+        \label{tab:egantibody}
+    \end{table}
+    
+\end{frame}
+
+\note[enumerate]{
+    \item this study focuses on the antibodies targeting virus.
+    \item they chose seven matured or unmatured antibodies targeting influenza virus, ebolavirus, or coronavirus
+    \item Four relatively matured antibodies in them are permitted to clinical or emergency use.
+    \item These two are the clinically unmatured ancestor.
+}{}{}
+
+
+\begin{frame}{Evaluation metrics \normalsize --- Therapeutic properties by wet lab assays}\label{sec:assay}
+    Four important therapeutic properties are considered to evaluate the designed variants:
+    \begin{enumerate}
+        \item \ulbf{Antigen binding affinity}: dissociation constant $K_d$ (Mol)
+        \item \textbf{Thermostability}: melting temperature $T_m$ ($^\text{o}$C)
+        \item \textbf{Non-specific Binding}: median fluorescence intensity (MFI) values\footnote{Adhesion to soluble membrane proteins marked with fluorescence beads}
+        % \item \textbf{T-cell-mediated immunogenicity}: the number of predicted peptide binders to HLA I/II\footnote{by published softwares, \texttt{NetMHCPan} and \texttt{NetMHCIIPan}}
+        \item \textbf{Virus neutralization}: the concentration of antibody that inhibits 50\% (pseudo-)viral infection $\text{IC}_{50}$
+    \end{enumerate}
+\end{frame}
+
+\note[enumerate]{
+    \item Four therapeutic properties are considered.
+    \item Antigen binding affinity is indicated by dissociation constant, denoted as $K_d$, the less the better
+    \item Thermostability is indicated by melting temperature, denoted as $T_m$, need to above 70 Celsius degree
+    \item Non-specific binding is measured by the adhesion to soluble membrane proteins marked with fluorescence beads and indicated by median fluorescence intensity. the lower the better
+    \item Virus neutralization is measured by the concentration of antibody that inhibits 50\% viral infection, denoted as $\text{IC}_{50}$ 
+}{}
+%----------------------------------------------------------------------------------%
+
+\section{Results}
+
+\subsection{Improvements in therapeutic properties}
+
+\begin{frame}{Therapeutic properties \normalsize --- Improving affinity \& keeping thermostability}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\linewidth]{20240321-ESM/figs/result1_bindingthermo.pdf}
+        \caption{Novel variants for four matured and unmatured examplars.(a) fold change; (b) $K_d$ of optimal variant Fab and corresponding $T_m$; (c) BLI trace plot (Fig. (\ref{fig:BLI_data}) of Appendix) of optimal variants}
+        \label{fig:result1_bindingthermo}
+    \end{figure}
+\end{frame}
+
+\note[enumerate]{
+    \item Due to the original figure itself is too long to be shown, I only show four of the seven antibodies, two matured and two unmatured, and these are their corresponding antigens
+    \item This column is the fold change in dissociated constant of the selected variants in round 1 and further in round 2. Comparing to the wide type, even matured antibodies can be improved in antigen affinity and the unmatured have much more progresses.
+    \item the second subfigure shows the evolutionary trajectories from widetype to the optimal variant in affinity.
+    \item The solid lines are evolution guided in this study. ``VH D42G'' means the D at 42nd position of heavy chain is mutated to G.
+    \item We can see the obvious improvement in antigen affinity without reducing the thermal stability.
+    \item Ths final part is BLI trace plot of loading and unloading the optimal IgG/Fabs to attached antigen, intuitively showing the dissociation process.
+    \bigskip
+    % \item For different antigen, the dissociation constants should be different.
+}{}
+
+\begin{frame}{Therapeutic properties \small --- Keeping specificity \& improving neutralization potency}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\linewidth]{20240321-ESM/figs/result2_specificityviral.pdf}
+        \caption{Specificity and neutralization potency of the affinity-enhanced variants. (a) non-specific binding intensity; (b) pseudo-virus neutralization activity of C145 variants; (c) Relationship between the FCs in $K_d$ and in $\text{IC}_{50}$ of all the variants.}
+        \label{fig:result2_specificityviral}
+    \end{figure}
+\end{frame}
+
+\note[enumerate]{
+    \item In addition, as shown in subfigure (a), the non-specific binding intensity of affinity-enhanced variants have similar with the corresponding wild-type and keep in therapeutically viable range.
+    \item For testing viral neutralization activity, the antibody are diluted the fraction infectivity is monitored.
+    \item The $\text{IC}_{50}$ is the concentration of antibody with 50\% cells uninfected.
+    \item Take an example of antibody C143, we can see the affinity-enhanced variants always has lower $\text{IC}_{50}$.
+    \item And we can see the fold changes of dissociated constant and $\text{IC}_{50}$ are highly correlated.
+}{}
+
+
+% \subsection{Originality of affinity-enhanced substitutions}
+
+% \begin{frame}{}
+%     \begin{quote}
+%         \small\color{gray}
+%         Some interesting findings are described in the paper but not shown in figure or table.
+%     \end{quote}
+%     \begin{enumerate}
+%         \item Algorithm recommended AA substitutions of the UCAs are found in their matured versions, 
+%     but the affinity-enhanced substitutions are brand new.
+%     LMP successfully explores an alternative evolutionary routes.
+%     \end{enumerate}
+    
+% \end{frame}
+
+\subsection{Comparison with sequence-based benchmarks}
+
+\begin{frame}{Brief descriptions \normalsize --- mutation frequency-based \& other PLMs}
+    \begin{enumerate}
+        \item Sequence searching in \textbf{abYsis}\footnote{Integrated antibody sequence and structure of multiple species} database
+        \item Sequence searching in \textbf{UniRef90} database
+        \item \textbf{AbLang}: protein language model pretrained on $\sim 10^7$ sampled sequences from \uline{immune repertoire sequencing data} in the Observed Antibody Space (OAS) database
+        \item \textbf{Sapiens}: protein language model pretrained on $\sim 10^8$ \uline{human antibody sequences} from the OAS datasbase
+    \end{enumerate}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\linewidth]{20240321-ESM/figs/alignment.pdf}
+        \caption{Similar sequence alignment within database and obtaining the highly frequent mutations}
+        \label{fig:alignment}
+    \end{figure}
+\end{frame}
+
+\note[enumerate]{
+    \item First, let us have an intuitive knowledge of the benchmark methods.
+    \item abYsis is an integrated multi-species antibody sequence database. 
+    \item By searching similar sequences with the wide-type sequence in this database by alignment,
+    we can get highly frequent mutations as the selected set of variants for this method.
+    \item Alternatively, the searching process can be done in UniRef90. Both of them are site-independent.
+    \item These two language models, AbLang and Sapiens, have similar transformer architectures with the PLM used in this study, but pretrained on different datasets.
+    \item The former trained on the sampled immune-related sequences from OAS; the latter trained on the human antibody sequences from OAS, instead of universal set of natural protein sequences.
+}{}
+
+
+\begin{frame}{\normalsize General PLM consistently outperformed all baseline methods}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\linewidth]{20240321-ESM/figs/benchmark.png}
+        \caption{Fraction of improved variants recommended by general PLM in this study and other four benchmark methods and fold change in $K_d$ for the three unmatured antibodies}
+        \label{fig:benchmark}
+    \end{figure}
+\end{frame}
+
+
+\note[enumerate]{
+    \item The criteria are percentage of improved variants in recommend sets and fold change in dissociation constant compared to wild types.
+    \item We can see the general protein language model has constantly higher percentage of improved variants than other benchmarks and fold change in dissociation constant.
+    \item For MEDI8852 UCA and mAb114 UCA, the simply seq searching methods are even better than AbLang and Sapiens.
+}{}
+
+
+\subsection{Compuational and evolutional efficiency}
+
+\begin{frame}{\normalsize Efficient evolution speeds up the novel antibody discovery}
+    With GPU-accelerated hardware\footnote{AMD EPYC Rome 7502P 2.5-GHz CPU and an Nvidia Ampere A40 48GB GPU}
+    \begin{enumerate}
+        \item per antibody (including both $V_H$ \& $V_L$): $<1\ \text{s}$ on widely available
+        \item 742 therapeutically relevant antibodies\footnote{from Thera-SAbDab database}: $\sim 3\ \text{min}$
+        \item scale linearly with the number of antibodies
+    \end{enumerate}
+    \medskip
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.57\linewidth]{20240321-ESM/figs/evolutionefficiency.pdf}
+        \caption{Comparison of affinity fold improvements versus experimental scale. 
+        The other methods design variants with rounds of cell culture and sorting, which take weeks.}
+        \label{fig:evolutionefficiency}
+    \end{figure}
+\end{frame}
+
+\note[enumerate]{
+    \item For computational efficiency, to give predictions for each antibody requires less than one second with GPU.
+    \item Even for all 742 current therapeutical antibody, only about three minutes are needed, and the computational complexity are linear with the number of antibodies.
+    \item For the evolutional efficiency, in nature mutation, thousands to millions of variant are required, even if it can achieve a higher level maturation.
+    \item Recent antibody engineering technologies, Mason and Wellner, reported similar improvement in affinity but require even more variants and time to be tested.
+    \item These methods design variants with rounds of cell culture and sorting, which take weeks.
+}{}
+
+
+% \begin{frame}{Generality across diverse protein families}
+%     \begin{figure}
+%         \centering
+%         \includegraphics[width=0.8\linewidth]{20240321-ESM/figs/generality.pdf}
+%         \caption{Caption}
+%         \label{fig:generality}
+%     \end{figure}
+% \end{frame}
+
+%----------------------------------------------------------------------------------%
+
+\section{Discussion}
+
+\begin{frame}{Discussion}
+    \begin{enumerate}
+        \item General PLMs can guide highly efficient affinity maturation based in the wide-type antibody sequence alone.
+        \item The affinity improvements are lower than those from in vivo random evolution, which explores a much larger mutation space, but it costs much more time, labor, and materials.
+        \item Evolutionary information alone provides sufficient prior information when selecting small numbers of substitutions to test for improved fitness.
+        \item Language models should also serve as a baseline for future machine learning methods using supervision or other task-specific training data.
+    \end{enumerate}
+\end{frame}
+
+\note[enumerate]{
+    \item General PLMs can guide highly efficient affinity maturation based in the wide-type antibody sequence alone,
+        although the affinity improvements are lower than those from in vivo random evolution, which explores a much larger mutation space, but it costs much more time, labor, and materials.
+    \item To answer the open question at the beginning of presentation,
+    \item Evolutionary information alone can provide sufficient prior information when selecting small numbers of substitutions to test for improved fitness.
+    \item Further, language models should serve as a baseline for future machine learning methods using supervision or other task-specific training data.
+}{}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Appendix}
+
+\begin{frame}{Illustration of Bio-Layer Immobilization (BLI) binding experiment}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\linewidth]{20240321-ESM/figs/BLI_data.pdf}
+        \caption{The procedure of BLI binding experiment and BLI trace plot. Back to Fig. (\ref{fig:result1_bindingthermo})}
+        \label{fig:BLI_data}
+    \end{figure}
+\end{frame}
+
+\note[enumerate]{
+    \item this device monitors the changes in an optical interference pattern as molecules binding to 
+    or dissociate from a sensor surface.
+}{}
+
+
+% \section{References}
+\begin{frame}[allowframebreaks]{References}
+    \footnotesize
+    \nocite{}
+    \bibliography{ref}
+    \bibliographystyle{unsrt}
+    % \tiny\bibliographystyle{alpha}
+\end{frame}
+
+
+% }
+
+
+
+
+
+
+% \begin{frame}
+%     \begin{center}
+%         {\Huge\calligra Thanks!}
+%     \end{center}
+% \end{frame}
+
+\end{document}

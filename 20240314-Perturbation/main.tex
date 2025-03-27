@@ -1,0 +1,861 @@
+\documentclass[10pt]{beamer}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%   Options for notes   %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% \setbeamertemplate{note page}[plain]
+% \setbeameroption{show notes}
+% \setbeameroption{show notes on second screen}
+% \setbeameroption{show only notes}
+% \setbeameroption{show only slides with notes}
+
+\input{preamble}
+\algnewcommand\algorithmicinitialize{\textbf{initialize: }}
+\algnewcommand{\Initialize}[1]{\State \algorithmicinitialize #1}
+
+%     presenter info    %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\author{
+Xiaocheng ZHOU
+}
+\title{
+CINEMA-OT
+}
+\subtitle{
+Causal identification of single-cell experimental perturbation effects with CINEMA-OT\cite{dong_causal_2023}
+}
+\date{\today}
+\institute{
+Journal Club
+}
+
+\begin{document}
+
+% \kaishu
+\begin{frame}
+    \titlepage
+    % \begin{figure}[htpb]
+    %     \begin{center}
+    %         \includegraphics[width=0.2\linewidth]{pic/CUHKSZ-Logo.pdf}
+    %     \end{center}
+    % \end{figure}
+\end{frame}
+
+
+\begin{frame}{Preface}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.95\linewidth]{20240314-Perturbation/figs/preface.png}
+    \end{figure}
+\end{frame}
+
+\section{Motivation}
+
+\begin{frame}{Perturbation in biology}
+    \begin{itemize}\small
+        \item Perturbation: molecular responses (treatment effect) to external signals
+        \begin{itemize}
+            \item drug treatment, genetic interference, pathogen infection, etc
+        \end{itemize}
+        \item Individual treatment effect (ITE): the gene expression \textbf{changes in single cell before and after treatment}
+        \begin{gather}
+            \text{ITE} = \mathbf{X}_{t=1} - \mathbf{X}_{t=0}.
+        \end{gather}
+    \end{itemize}
+    
+    \textbf{Challenges}
+    \begin{enumerate}
+        \item Perturbed and non-perturbed cells are unpaired since destruction when measuring.
+        \item Underlying heterogeneity may obscure the estimation of ITE. 
+        \begin{itemize}
+            \item cell type, cell cycle, micro-environment, etc
+        \end{itemize}
+    \end{enumerate}
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.7\linewidth]{20240314-Perturbation/figs/pert.png}
+        \caption{Perturbation experiment and response heterogeneity.}
+        \label{fig:pert}
+    \end{figure}
+\end{frame}
+
+\note[enumerate]{
+    \item Understanding molecular responses in single cells upon various perturbations is crucial in biology.
+    \item Single-cell measurements typically destroy the cells, leading to \textbf{unpaired} distributions of perturbed and non-perturbed cells.
+    \item Heterogeneous confounding factors such as the cell statement, and the micro-environment
+}{}
+
+
+\begin{frame}{Causal inference framework}
+    Counterfactual describes the treatment effect on untreated cells (vice versa) 
+    by constructing causal pair that have matched confounding conditions. 
+    Set {$z$ to select a single cell}, then
+    \begin{align}
+        \text{ITE} & = \mathbb{E}[X_{T=1}\mid T=0, Z=z] - \mathbb{E}[X\mid T=0, Z=z]
+    \end{align}
+    
+    \begin{definition}[Counterfactual]
+        \textbf{Counterfactual outcome}: An expression ($X$) this cell should have had if \textit{it was treated} ($T=1$) rather than \textit{doing nothing to it} ($T=0$).
+    \end{definition}
+    \medskip
+
+    \begin{framed}
+    \texttt{CINEMA-OT}
+    \begin{enumerate}
+        \item identifies and separates \textbf{confounding variations} from perturbation effects, and
+        \item constructs \textbf{causal pairs of cells} by optimal transport on confounding space.
+    \end{enumerate}  
+    \end{framed}
+\end{frame}
+
+
+\section{CINEMA-OT}
+\begin{frame}{Assumptions}
+    \begin{enumerate}
+        \item Independent sources and noise: $\vperp \{\bm{s}_{1:L},\bm{e}_{1:L},\epsilon_{i:N}\}$
+        \item Linearity of source signal combinations%\footnote{\color{red}Author claimed that at most only one the signal is Gaussian, why?}
+    \end{enumerate}
+    \begin{gather}
+        \bm{z}_i{\sim}[s_1 + e_1 , \cdots , s_L + e_L , t + e_t]\\
+        \bm{x}_i = \bm{z}_i^\mathsf{T}\mathbf{A} + \bm{\epsilon}_i
+    \end{gather}
+    \begin{itemize}\small
+        \item $\bm{s}_{1:L}$: confounding factors
+        \item $t$: treatment event $t\in\{0,1\}$
+        \item $\bm{e}_{\{1:L,t\}}$: biological variation contributing to the heterogeneity within a factor
+        \item $\bm{z}_i\in\mathbb{R}^{L+1}$: \textbf{latent} vector for cell $i$, $i=1,\cdots, N$ from the signals
+        \item $\bm{\epsilon}_i\in\mathbb{R}^G$: measurement noise for cell $i$, i.i.d.
+        \item $\mathbf{A}\in\mathbb{R}^{(L+1)\times D}$: mixing matrix from $L+1$ sources to $D$ genes
+        \item $\bm{x}_i\in\mathbb{R}^{G}$: \textbf{observational} gene count vector of cell $i$
+    \end{itemize}
+\end{frame}
+
+\note[enumerate]{
+    \item Confounding factors and treatment event are independent r.v.s.
+    \item Confounding factor, such as cell type $s_l\in\{1,\cdots,K\}$
+    \item The expression of each gene can be linearly decomposed as the mixing of noisy confounding signals and treatment-associated signals.
+}{}
+
+\begin{frame}{Identification of confounding factors}
+    \begin{enumerate}
+        \item {Decomposing independence components}
+        \begin{enumerate}
+            \item the first $L+1$ PCs, $\Tilde{\bm{x}}_i$, can be viewed as
+            a \textbf{linear transformation of the original signals}
+            \begin{gather}
+                \Tilde{\bm{x}}_i\overset{\text{iid}}{\sim}\mathbf{B}[s_1 + e_1, \cdots, s_L + e_L, t + e_t]
+            \end{gather}
+            \item the identified \textbf{ICs can be unmixed up} to a permutation\footnote{by ICA identifiability theorem}
+            %requiring the \color{red}at-most-only-one-Gaussian assumption}
+            \begin{gather}
+                \mathbf{W}^{\text{ICA}}\hat{\bm{x}}_i\overset{iid}{\sim}[s_1 + e_1 , \cdots , s_L + e_L, t + e_t],~\text{up to a permutation}
+            \end{gather}
+        \end{enumerate}
+        \medskip
+        \item {Obtaining confounding space} $S^c$
+        \begin{enumerate}
+            \item \textbf{testing independency} between treatment event and each IC\footnote{Chatterjee's coefficient-based distribution-free test}
+            \item decoupling $S^c:=\hat{\bm{s}}_{i,1:L}$ and $\hat{t}_{i}$
+        \end{enumerate}
+    \end{enumerate} 
+\end{frame}
+
+% \note[enumerate]{
+%     \item the confounder terms are identifiable with the ICA tranform up to a permutation
+%     \item the contributions of noise terms are not distorted as the relative ratio between $s$, $z$ and $e$ are preserved in the output
+% }{}
+
+\begin{frame}{Construction of causal pairs --- \normalsize Optimal transport (Recap)}
+    Given two distributions $\mu,\nu\in\mathbb{R}^d$ and cost function $C(x,y)$ (such as $\|x-y\|^2$),
+    we would like to find a mapping minimizing the total cost
+    {\small\begin{gather}
+        V(\mu,\nu) = \min_{T:T(\mu)=\nu}\ \mathbb{E}_{X\sim\mu}C(X,T(X)) \label{eq:primalot}
+    \end{gather}}
+    \begin{itemize}\small
+        \item $V$: distance measure between two distributions 
+        \item $T^*$: optimal mapping between two distributions
+    \end{itemize}
+    \bigskip
+    By \textbf{regularization}, it become tractable\footnote{It can be efficiently solved by the Sinkhorn–Knopp algorithm}.
+    {\small\begin{align}
+        \min_{\gamma\in\Gamma}\ & \mathbb{E}_{(X,Y)\sim\gamma}C(X,Y) + \epsilon {\color{blue}H(\gamma)}  \\
+        \text{s.t.}\quad
+        & \Gamma\triangleq\{\gamma:\mathbb{E}\mathbbm{1}_{(x,Y)}=\mu(x),\mathbb{E}\mathbbm{1}_{(X,y)}=\nu(y)\} \notag \\
+        & {\color{blue}H(\gamma) \triangleq \mathbb{E}_{(X,Y)\sim \gamma}\ln \gamma(X,Y) - 1}\notag
+    \end{align}}
+    \begin{itemize}\small
+        \item $\Gamma(\mu,\nu)$: the collection of all couplings (joint dist.\footnote{
+        Discretizing $\mu$ and $\nu$ to $N_1$ and $N_2$ bins, respectively, $\gamma \in \mathbb{R}_+^{N_1\times N_2}$.
+        }) $\gamma$ between $\mu$ and $\nu$
+        \item $H(\gamma)$: entropy regularization
+    \end{itemize}
+    \smallskip
+\end{frame}
+
+\begin{frame}{Construction of causal pairs --- \normalsize Examples of OT mapping}
+    \begin{columns}
+        \column{0.025\linewidth}
+        
+        \column{0.5\linewidth}
+        \begin{figure}
+            \centering
+            \begin{subfigure}{\linewidth}
+                \centering
+                \includegraphics[width=\linewidth]{20230413-COMMOT/figs/optrans_demo.pdf} % replace with your image file
+                \subcaption{A demo of 2D Optimal Transport}
+                \label{fig:optrans_demo}
+            \end{subfigure}
+            \\
+            \begin{subfigure}{\textwidth}
+                \centering
+                \includegraphics[width=\linewidth]{20230413-COMMOT/figs/entropyreg.pdf} % replace with your image file
+                \subcaption{Effect of $s$ on OT, a example of two 1D distributions}
+                \label{fig:entropyreg}
+            \end{subfigure}
+            \caption{Two examples of optimal transport}
+            \label{fig:otexamples}
+        \end{figure}
+        
+        \column{0.45\linewidth}
+        \begin{itemize}
+            \item The mass of in distribution $\mu$ is matched to the nearest that of $\nu$.
+            \item The smaller $\epsilon$ is, the more sparse the solution is, implying a finer mapping; in reverse, a more mixed one.
+        \end{itemize}
+        
+        \column{0.025\linewidth}
+    \end{columns}
+\end{frame}
+
+
+\begin{frame}{Construction of causal pairs --- \normalsize mapping between conditions in space $S^c$}
+    To pair between treatment ($\{\bm{x}'_i\overset{\text{iid}}{\sim}\mu'\}_{i=1}^{N_1}$) and 
+    control ($\{\bm{x}_j\overset{\text{iid}}{\sim}\mu\}_{j=1}^{N_2}$) groups and 
+    providing cost function $C(\bm{x},\bm{y}) \triangleq e^{\frac{\|\bm{x}-\bm{y}\|}{s}}$, \texttt{CINEMA-OT} gives
+    \begin{enumerate}
+        \item mapping matrix (joint dist.):
+        \begin{gather}
+            \mathbb{R}_+^{N_1\times N_2}\ni\mathbf{M}:=\gamma^*\gets \text{OT}(S^c(\{\bm{x}'_i\}_{i=1}^{N_1}),S^c(\{\bm{x}_j\}_{j=1}^{N_2}))
+        \end{gather}
+        \item individual treatment effect\footnote{in matrix form, $\text{ITE}=\mathbf{X}'- \diag{(\mathbf{M1})}^{-1}\mathbf{M}$}:
+        \begin{align}
+            \text{ITE}(\bm{x}'_i) = & \bm{x}'_i - \hat{\bm{x}}_i \\
+            \hat{\bm{x}}_i := & \sum_{j=1}^{N_2}\bm{x}_j\frac{M_{i,j}}{\sum_{j'=1}^{N_2}M_{i,j'}}
+        \end{align}
+    \end{enumerate}
+    \textcolor{blue}{Restore the treated cell before treatment by the combination of untreated cells similar in confounding factors.}
+\end{frame}
+
+
+\begin{frame}{Pairing under differential abundance --- \normalsize Weighted optimal transport}
+    The cells may die or proliferate in response to a perturbation.
+    \begin{itemize}
+        \item change the distribution of cell densities and
+        \item {introduce \textbf{dependency} between confounding factors and the treatment event}.
+    \end{itemize}
+    \bigskip
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\linewidth]{20240314-Perturbation/figs/cinemaotw.png}
+        \caption{Part of confounder-caused variation may be removed by unweighted \texttt{CINEMA-OT} in confounding space under differential abundance}
+        \label{fig:cinemaotw}
+    \end{figure}
+\end{frame}
+
+\note[enumerate]{
+    \item A treatment may change the distribution of cell densities, for example cells may die or proliferate in response to a perturbation,
+    \textbf{introducing dependency between underlying confounders and the treatment event}.
+}{}
+
+\begin{frame}{Pairing under differential abundance --- \normalsize Reweighting procedure}
+    \texttt{CINEMA-OT-W}: \textcolor{blue}{grouping the cells with similar confounder characteristics}
+    \begin{enumerate}\small
+        \item Given PC embeddings of both groups: $\{\Tilde{\bm{x}}'_i\}_{i=1}^{N_1}$ and $\{\Tilde{\bm{x}}_j\}_{j=1}^{N_2}$
+        \item Find the $K$-NNs of each treated cell in untreated group: $\{\mathcal{N}_K(\Tilde{\bm{x}}'_i)\}_{i=1}^{N_1}$
+        \item Synthesize the matched untreated proxy for each $\Tilde{\bm{x}}'_i$: $\hat{\Tilde{\bm{x}}}_i = \mean(\{\Tilde{\bm{x}}_j\}_{j\in\mathcal{N}_K(\Tilde{\bm{x}}'_i)})$
+        \item Cluster the proxies of the treated and emb.'s of the untreated: $\{\hat{\Tilde{\bm{x}}}_{1:N_1},\Tilde{\bm{x}}_{1:N_2}\}$\footnote{The clustering and above can be omitted if there are predefined meaningful labels.}
+        \item Downsample cells in each cluster $c$ to have equal densities: $|\mathcal{S}'_c|=|\mathcal{S}_c|$
+        \item Perform \texttt{CINEMA-OT} on the downsampled data $\{\bm{x}'_i\}_{i\in \mathcal{S}'}$ and $\{\bm{x}_j\}_{j\in\mathcal{S}}$
+    \end{enumerate}
+\end{frame}
+
+\section{Results}
+
+\subsection{Potential downstream analyses}
+
+\begin{frame}{(1) Treatment response-specific subgroup analyses}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{20240314-Perturbation/figs/subgroup.png}
+        \caption{The ITE matrices can be clustered and obtain response-specific subgroups, e.g.}
+        \bigskip
+        \begin{enumerate}
+            \item Identify groups of cells with a shared treatment responses and 
+            \item Identify the genes with significant response magnitudes and their biological functions.
+        \end{enumerate}
+        \label{fig:subgroup}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{(2) Synergy analysis with existing combinatorial perturbation design}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{20240314-Perturbation/figs/combinatory.png}
+        \caption{The ITE from combinatorial expremental design can be used to test the synergy effect.}
+        \label{fig:combinatory}
+    \end{figure}
+    Consider combinatorial perturbation design, for example, $\mathbf{D}_{A=1,B=0}$ is the ITE matrix for treatment $A$ alone, then the synergy matrix $\bm{\Psi}=[\Psi_{j,g}]$ as
+    \begin{gather}
+        \bm{\Psi} = \mathbf{D}_{A=1,B=1} - (\mathbf{D}_{A=1,B=0} + \mathbf{D}_{A=0,B=1}).
+    \end{gather}
+    Then test whether a gene $g$ has synergistic effect under \textbf{null hypothesis}
+    \begin{gather}
+        \mathcal{H}_0:\mathbb{E}\Psi_{j,g}=0,\ \forall j \\
+        \text{Synergy score} = |\mean(\Psi_{\cdot,g})|
+    \end{gather}
+\end{frame}
+
+% \begin{frame}{(3) Attribution of differential treatment effects}
+%     \begin{figure}
+%         \centering
+%         \includegraphics[width=0.9\linewidth]{20240314-Perturbation/figs/matching.png}
+%         \caption{The differential treatment effects can be attributed to either identified confounders or underlying ones by analysing the clustered matching matrix.}
+%         {\footnotesize
+%         left matrix: top left square: cell proportion in both R1 and A1
+%         }
+%         \label{fig:matching}
+%     \end{figure}
+%     \medskip
+%     The mapping matrix can match the clusters in response space (\mathbf{D}) and the ones in confounder space.
+%     \begin{enumerate}
+%         \item 
+%     \end{enumerate}
+    
+% \end{frame}
+
+\subsection{Benchmark settings}
+
+\begin{frame}{Overview --- \normalsize Methods and notations}
+    \begin{enumerate}
+        \item Proxy-based methods (Mixscape\cite{papalexi_characterizing_2021} and Harmony\cite{korsunsky_fast_2019}-Mixscape)
+        \item Autoencoder-based methods (CPA\cite{lotfollahi_predicting_2023}, scGen\cite{lotfollahi_scgen_2019}, and ContrastiveVI\cite{weinberger_isolating_2023})
+        \item Pure OT-based methods (CellOT\cite{bunne_learning_2023})
+    \end{enumerate}
+    \medskip
+    Common notations
+    \begin{itemize}\small
+        \item Original expression matrices: $\{\bm{x}'_i\}_{i=1}^{N_1}$ and $\{\bm{x}_j\}_{j=1}^{N_2}$
+        \item Predicted expression matrices: $\{\hat{\bm{x}}'_i\}_{i=1}^{N_1}$ and $\{\hat{\bm{x}}_j\}_{j=1}^{N_2}$
+        \item PC embeddings: $\{\Tilde{\bm{x}}'_i\}_{i=1}^{N_1}$ and $\{\Tilde{\bm{x}}_j\}_{j=1}^{N_2}$
+        \item Other latent embeddings: $\{\bm{z}'_i\}_{i=1}^{N_1}$ and $\{\bm{z}_j\}_{j=1}^{N_2}$
+    \end{itemize}
+    \medskip
+    Common targets
+    \begin{enumerate}\small
+        \item consider underly covariates in model by \textbf{recovering confounder/shared space}
+        \item estimate/predict the \textbf{single-cell level treatment effect} of certain perturbation
+    \end{enumerate}
+
+\end{frame}
+
+\begin{frame}{Overview --- Objectives and metrics}
+    Simulation setting:
+    \begin{enumerate}\small
+        \item overall treatment effect,
+        \item confounder-specific treatment effect, e.g. cell type
+        \item unobservable-factor-driven treatment effect, e.g. drug dose distribution
+    \end{enumerate}
+    \bigskip
+    Evaluation metrics
+    \begin{enumerate}\small
+        \item \textbf{ASW} (average silhouette width) and \textbf{PCR} (principal components regression score) measure \uline{cell distribution equality after treatment-effect removal}.
+        \item \textbf{ITE ARI} (adjuested rand index) compares the \uline{overlap between the clustering on estimated differential response and cell population}, 
+        indicating the clustering structure preservation on response.
+        \item \textbf{ITE PCR} measures the \uline{independency between ground-truth unrelated confounders and response}, indicating the attribution accuracy.
+    \end{enumerate}
+\end{frame}
+
+\note[enumerate]{
+    \item common responses regardless of confounders
+    \item such as cell-type-specific
+    \item such as treatment drug dose distribution
+}{}
+
+\begin{frame}{Proxy-based methods --- \normalsize Mixscape}
+    %     \begin{algorithm}[H]
+    %     \footnotesize
+    %     \caption{Mixscape}\label{alg:mixscape}
+    %     \begin{algorithmic}[1]
+    %         \Require{data: Pembedding,\bm{y}$}
+    %         \Require{number of effects: $L$, and hyperparameters: $\sigma^2$ and $\bm{\sigma}_0^2$}
+    %         \Require{a function $\text{SER}(\bm{X},\bm{y};\sigma^2,\sigma_0^2)\to(\bm{\alpha},\bm{\mu}_1,\bm{\sigma}_1)$ 
+    %         that computes the posterior distribution for $\bm{b}_l$ under SER model}
+    %         \Initialize{posterior means: $\overline{b}_l=\bm{0}$ for $l=1,\cdots,L$}
+    %         \Repeat
+    %             \For{$l$ in $1,\cdots,L$}
+    %             \State $\overline{r}_l\gets \bm{y}-\bm{X}\sum_{l'\neq l}\overline{b}_{l'}$\Comment{\textcolor{gray}{expected residuals without $l$-th single effect}}
+    %             \State $(\bm{\alpha}_l,\bm{\mu}_{1,l},\bm{\sigma}_{1,l})\gets\text{SER}(\bm{X},\overline{r}_l;\sigma^2,\sigma_{0,l}^2)$
+    %             \State $\overline{b}_l \gets \bm{\alpha}_l\circ\bm{\mu}_{1,l}$\Comment{\textcolor{gray}{expected $l$-th effect's coefficient}}
+    %             \EndFor
+    %         \Until{convergence criterion satisfied}
+    %         \Return{$\bm{\alpha}_1,\bm{\mu}_{1,1},\sigma_{1,1}^2,\cdots,\bm{\mu}_{1,1},\sigma_{1,1}^2$}
+    %     \end{algorithmic}
+    % \end{algorithm}    
+    \bigskip
+    \textbf{Mixscape}\cite{papalexi_characterizing_2021}
+    \begin{enumerate}
+        \item Given \textbf{PC embeddings} of both groups: $\{\Tilde{\bm{x}}'_i\}_{i=1}^{N_1}$ and $\{\Tilde{\bm{x}}_j\}_{j=1}^{N_2}$
+        \item Find the $K$-NNs of each treated cell in the untreated: $\{\mathcal{N}_K(\Tilde{\bm{x}}'_i)\}_{i=1}^{N_1}$\label{enum:mixscape2}
+        \item Synthesize the untreated proxy for each treated cell: $\hat{\bm{x}}_i = \mean(\{\bm{x}_j\}_{j\in\mathcal{N}_K(\bm{z}'_i)})$
+        \item Obtain the ITE for each $\bm{x}'_i$: $\text{ITE}(\bm{x}'_i)=\bm{x}'_i - \hat{\bm{x}}_i$\label{enum:mixscape4}
+    \end{enumerate}
+    \bigskip
+    
+    \textbf{Harmony\footnote{Harmony\cite{korsunsky_fast_2019} is an algorithm to remove batch effect.}-Mixscape}
+    \begin{enumerate}
+        \item Obtain \textbf{Harmony embeddings} of both groups: $\{\bm{z}'_i\}_{i=1}^{N_1}$ and $\{\bm{z}_j\}_{j=1}^{N_2}$
+        \item Obtain the ITE by running Mixscape Steps \ref{enum:mixscape2}-\ref{enum:mixscape4}
+    \end{enumerate}
+    
+\end{frame}
+
+
+\begin{frame}{Autoencoder-based methods --- \normalsize CPA (AE architecture)}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\linewidth]{20240314-Perturbation/figs/cpa.png}
+        \caption{Architecture of compositional perturbation autoencoder (CPA)}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Autoencoder-based methods --- \normalsize CPA (assumptions)}
+    \textbf{Assumptions} of compositional perturbation autoencoder (CPA)\cite{lotfollahi_predicting_2023}: 
+    given a dataset $\mathcal{D}=\{(\bm{x}_i,\bm{d}_i,\bm{c}_i)\}_{i=1}^N$, every sample (omit subscript $i$) is generated from a composed low-dimension representation
+    \begin{gather}
+        \bm{z} = \bm{z}_0 + \mathbf{V}^\text{t}[f_1(d_1),\cdots,f_M(d_M)] + \sum_{j=1}^K\mathbf{V}^\text{c}_j\bm{c}_j
+    \end{gather}
+    \begin{itemize}\small
+        \item $\bm{d}=[d_1,\cdots,d_M]\geq\bm{0}$: doses of $M$ drugs, $d_j=0$: not treated by drug $j$
+        \item $\bm{c}=[\bm{c}_1,\cdots,\bm{c}_K]$: additional discrete covariates such as cell types or species, $\bm{c}_j\in\{0,1\}^{K_j}$ is a one-hot vector.
+        \item $\bm{z}_0\in\mathbb{R}^d$: basal latent state, \textbf{independent with perturbations/coveriates}
+        \item $f_{j}:\mathbb{R}\to\mathbb{R}$: non-linear scale each $d_j$
+        \item $\mathbf{V}^\text{t}\in\mathbb{R}^{d\times M}$: embedding for each possible perturbation represented in $\bm{d}$
+        \item $\mathbf{V}^\text{c}_j\in\mathbb{R}^{d\times K_j}$: embedding for the $j$-th discrete covariate
+    \end{itemize}
+    \bigskip
+    \textbf{Target}: learn a ML model, given a triplet $(\bm{x}_i,\bm{d}_i,\bm{c}_i)$ as well as a target perturbation $\bm{d}'$, estimating the \textbf{counterfactual gene expression} $\hat{\bm{x}}_i'$.
+    \begin{gather}
+         \hat{\bm{x}}'_i=\mathcal{M}((\bm{x}_i,\bm{d}_i,\bm{c}_i),\bm{d}')
+    \end{gather}
+\end{frame}
+
+\begin{frame}{Autoencoder-based methods --- \normalsize CPA (AE architecture)}
+    Parameterization of the \textbf{unknown components}
+    \begin{enumerate}\small
+        \item encoder: $\hat{\bm{z}}_0 = \hat{\bm{f}}^\text{enc}(\bm{x})$
+        \item composition: $\hat{\bm{z}} = \hat{\bm{z}}_0 + \hat{\mathbf{V}}^\text{t}[\hat{f}_1(d_1),\cdots,\hat{f}_M(d_M)] + \sum_{j=1}^K\hat{\mathbf{V}}^\text{c}_j\bm{c}_j \ \text{s.t.}\ \hat{f}_{1:M}(0) = 0$
+        \item counterfactual mean and variance: $\hat{\bm{f}}^\text{dec}_\mu(\hat{\bm{z}})$ and $ \hat{\bm{f}}^\text{dec}_{\sigma^2}(\hat{\bm{z}})$
+    \end{enumerate}
+    \medskip
+    Three parts of \textbf{loss function}
+    \begin{enumerate}\small
+        \item reconstruction loss (Gaussian negative log-likelihood), 
+        where a positive constraint is imposed on $\sigma^2$ by $s(\sigma^2):=\log(\exp(\sigma^2+10^{-3})+1)$
+        \begin{gather}
+            l_i 
+            = \log s(\hat{\bm{f}}^\text{dec}_{\sigma^2}(\hat{\bm{z}}_i))/2 
+            + \|\hat{\bm{f}}^\text{dec}_\mu(\hat{\bm{z}}_i)-\bm{x}_i\|^2/2s(\hat{\bm{f}}^\text{dec}_{\sigma^2}(\hat{\bm{z}}_i))
+        \end{gather}
+        \item dependency loss (for perturbation/covariates classifiers)
+        \begin{gather}
+            l_i^\text{d} 
+            = \texttt{CE}(\hat{f}^\text{adv}_d(\hat{\bm{z}}_{i,0},\bm{d}_i))\quad \& \quad
+            l_{i,j}^\text{c} 
+            = \texttt{CE}(\hat{f}^\text{adv}_{c_j}(\hat{\bm{z}}_{i,0},\bm{c}_{i,j}))\ \forall\ j=1:K
+        \end{gather}
+    \end{enumerate}
+    \medskip
+    \textbf{Iteratively updating} parameters
+    \begin{enumerate}\small
+        \item $(\hat{f}^\text{adv}_d, \hat{f}^\text{adv}_{c_{1:K}})\gets\argmin \sum_{i}l_i^\text{d}+\sum_{i,j}l_{i,j}^\text{c}$
+        \item $(\hat{\bm{f}}^\text{enc},\hat{\bm{f}}^\text{dec},\hat{f}_{1:M},\hat{\mathbf{V}}^\text{t},\hat{\mathbf{V}}^\text{c}_{1:K})\gets\argmin \sum_{i}l_i-\lambda(\sum_{i}l_i^\text{d}+\sum_{i,j}l_{i,j}^\text{c})$
+    \end{enumerate}
+\end{frame}
+
+
+\begin{frame}{Autoencoder-based methods --- \normalsize scGen (VAE)}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.95\linewidth]{20240314-Perturbation/figs/GMVAE.pdf}
+    \end{figure}
+    {\small\begin{align}
+        P(\bm{x})
+        & =\mathbb{E}_{P(\bm{z})} P(\bm{x}\mid\bm{Z};\bm{\theta})\\
+        \implies
+        {L}(\bm{x}_i;\bm{\theta}) 
+        & = \log P(\bm{x}_i;\bm{\theta}) \\
+        & \geq \mathbb{E}_{Q(\bm{z}\mid \bm{x}_i;\bm{\phi})}\log\frac{P(\bm{x}_i\mid \bm{Z}_i;\bm{\theta})P(\bm{z})}{Q(\bm{z}\mid \bm{x}_i;\bm{\phi})} \\
+        & = \mathbb{E}_{Q(\bm{z}\mid \bm{x}_i;\bm{\phi})}\log P(\bm{x}_i\mid \bm{Z}_i;\bm{\theta}) 
+        - \infdiv{Q(\bm{z}\mid\bm{x}_i;\bm{\phi})}{P(\bm{z})} \\
+        & =: \textit{\L}(\bm{x}_i;\bm{\theta},\bm{\phi})\quad\quad \text{\textcolor{blue}{maximize the ELBO}}
+    \end{align}
+    \begin{itemize}
+        \item $P(\bm{z})=\mathcal{N}(\bm{0},\mathbf{I})$
+        \item $Q(\bm{z}\mid \bm{x}_i;\bm{\phi})=\mathcal{N}(\bm{z} \mid \bm{\mu}_{\bm{\phi}}(\bm{x}_i),\bm{\sigma}^2_{\bm{\phi}}(\bm{x}_i)\mathbf{I})$, where $\bm{\mu}_{\bm{\phi}}$ and $\bm{\sigma}^2_{\bm{\phi}}$ are encoders
+        \item $P(\bm{x}\mid \bm{z}_i;\bm{\theta})=\mathcal{N}(\bm{x}\mid \bm{f}_{\bm{\theta}}(\bm{z}_i),\bm{d}^2\mathbf{I})$, where $\bm{f}_{\bm{\theta}}$ is decoder
+    \end{itemize}}
+\end{frame}
+
+
+
+\begin{frame}{Autoencoder-based methods --- \normalsize scGen (assumptions and prediction)}
+    \textbf{Assumption} of scGen\cite{lotfollahi_scgen_2019}
+    \begin{enumerate}
+        \item the high-dimension expression $\bm{X}$ is generated from low-dimension representation $\bm{Z}$ in conditions $\bm{P}$, and
+        \item the variability related to conditions (perturbation and other covariates) linearly contributes to the representation.
+    \end{enumerate}
+    \begin{align}
+        \bm{X} & \sim P(\bm{x}\mid \bm{Z}, \bm{P}) \label{eq:scgenvae}\\
+        \bm{z} & = \bm{z}_0 + \bm{p}^\mathsf{T}\mathbf{D}
+    \end{align}
+    E.g. in perturbation, the representation of treated A-typed cell is 
+    \begin{gather}
+        \bm{z}_{A,t=1} = \bm{z}_{A,t=0} + \bm{\delta}\\
+        \implies\hat{\bm{\delta}} = \mean(\hat{\bm{z}}_{A,t=1})-\mean(\hat{\bm{z}}_{A,t=0})
+    \end{gather}.
+    \begin{enumerate}
+        \item Upsample within cell type to reach equal population for each condition
+        \item Downsample within condition to reach equal population
+        \item scGen constructs VAE to infer $\hat{\bm{z}}_i$ for each cell
+    \end{enumerate}
+\end{frame}
+
+
+
+
+
+\begin{frame}{Autoencoder-based methods --- \normalsize ContrastiveVI}
+    ContrastiveVI\cite{weinberger_isolating_2023} introduces an additional \textbf{salient latent variables}.
+    \begin{itemize}\small
+        \item shared variables: capture the intrinsic variation of natural cells by enforcing salient variables to be 0 when training on them.
+        \item salient variables: capture the \textbf{variation} by certain treatment, which can be transferred to other new cells to predict.
+    \end{itemize}
+    % the generation graph is as follow
+    % \begin{itemize}\small
+    %     \item $\ell_i$: latent RNA library size scaling factor on log
+    %     \item $\bm{w}_i$: mean proportion of expressed transcripts 
+    %     \item $\bm{f}^w: \mathbb{R}^{2d}\times\{0,1\}^B\to\mathbb{R}^G$
+    %     \item $\bm{f}^h$: dropout rate in cells
+    %     \item 
+    % \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.65\linewidth]{20240314-Perturbation/figs/ContrastiveVI.png}
+    \end{figure}
+\end{frame}
+
+\note[enumerate]{
+    \item which can be applied to untreated cell
+}{}
+
+% \begin{frame}{Overview}
+%     A cell's response to perturbation $Z$ is treated as an evolution (stochastic shifting) in a high-dimensional \textbf{space of cell states} $\mathcal{X}=\mathbb{R}^D$, which are assumed \textbf{not drastically} alter underlying cellular processes.\footnote{
+%     CINEMA-OT obtains the optimal coupling in the confounding factor space, more reasonable.}
+%     \todo{Overall pipeline}
+% \end{frame}
+
+
+\begin{frame}{Pure OT-based methods --- \normalsize OT dual problem (OT theory cont.)}
+    The primal formulation of OT can also be solved by considering its \textbf{dual problem} if Euclidean distance acts as the cost function.
+    {\small
+    \begin{align}
+        W(\mu,\nu)  & = \min_{\gamma\in\Gamma(\mu,\nu)} \ \mathbb{E}_{(\bm{X},\bm{Y})\sim\gamma}\|\bm{X} - \bm{Y}\|_2^2 \quad\quad\quad\quad \text{(Primal)} \\
+        % &&\text{s.t.}\quad & \Gamma\triangleq\{\gamma:\mathbb{E}\mathbbm{1}_{(x,Y)}=\mu(x),\mathbb{E}\mathbbm{1}_{(X,y)}=\nu(y)\} \\
+        W(\mu,\nu) & = \max_{(g,f)\in\Phi} \ {\color{teal}\mathbb{E}g(\bm{X})} + \mathbb{E}f(\bm{Y}) \quad\quad\quad\quad\quad\quad \text{(Dual)} \\
+        \text{s.t.}\ \Phi & \triangleq\{{(g,f)\in\mathbb{R}\times\mathbb{R}:g(\bm{x}) + f(\bm{y})\leq\frac{1}{2}\|\bm{x}-\bm{y}\|_2^2,a.e.}\}\notag
+    \end{align}}
+    
+    \bigskip
+    
+    The dual problem can be \textbf{further simplified}\cite{villani2003topics} to 
+    {\small
+    \begin{align}
+        W(\mu,\nu) & = \underbrace{\frac{1}{2}\mathbb{E}[\|\bm{X}\|_2^2 + \|\bm{Y}\|_2^2]}_{=:\mathcal{E}_{\mu,\nu}} - 
+        \min_{f\in\Tilde{\Phi}}\{\mathbb{E} {\color{teal}f^*(\bm{X})} + \mathbb{E} f(\bm{Y})\}\label{eq:dualot}\\
+        \text{s.t.}\ \Tilde{\Phi} & \triangleq \{{f\in\mathbb{R}:\text{convex functions}}\}\notag
+    \end{align}}
+    \begin{itemize}
+        \item ${\color{teal}f^*(\bm{x}) \triangleq \max_{\bm{y}}\ \left[\langle\bm{x},\bm{y}\rangle - f(\bm{y})\right]}$: $f$'s convex conjugate
+        \begin{itemize}
+            \item optimal transport map $T=\nabla f^*$ satisfying $\bm{X}\sim\mu\implies T(\bm{X})\sim\nu$
+            \item convex conjugate $f^*$ is \textbf{very hard to compute}.
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Pure OT-based methods --- \normalsize Approximation in a convex set}
+    Another convex function $g$ is proposed to approximate the simplified dual problem\cite{pmlr_v119_makkuva20a}, Eq. (\ref{eq:dualot}). 
+    Since ${\nabla f^*(\bm{x})\triangleq \argmax_{\bm{y}}\ \left[\langle\bm{x},\bm{y}\rangle - f(\bm{y})\right]}$, observe that for all $g\in\Tilde{\Phi}$
+    \begin{gather}
+         \langle \bm{x}, \nabla g(\bm{x})\rangle - f(\nabla g(\bm{x})) 
+         \leq \langle \bm{x}, \nabla f^*(\bm{x})\rangle - f(\nabla f^*(\bm{x})) 
+         = f^*(\bm{x}) \\
+         \implies \mathbb{E}\left[\langle\bm{X},\nabla g(\bm{X})\rangle - f(\nabla g(\bm{X}))\right]
+         \leq \mathbb{E} f^*(\bm{X}),
+    \end{gather}
+     where the equality is achieved with $g=f^*$, i.e.
+     \begin{gather}
+         \max_{g\in\Tilde{\Phi}}\ \mathbb{E}\left[\langle\bm{X},\nabla g(\bm{X})\rangle - f(\nabla g(\bm{X}))\right]
+         = \mathbb{E} f^*(\bm{X})
+     \end{gather}
+     Then Eq. (\ref{eq:dualot}) can be approximated as
+     \begin{gather}
+     \small
+         W(\mu,\nu) = \mathcal{E}_{\mu,\nu} - 
+         \min_{f\in\Tilde{\Phi}} \max_{g\in\Tilde{\Phi}}\underbrace{\left\{
+            \mathbb{E}\left[\langle\bm{X},\nabla g(\bm{X})\rangle - f(\nabla g(\bm{X}))\right] + 
+            \mathbb{E}f(\bm{Y})
+        \right\}}_{=:\mathcal{V}_{\mu,\nu}(g,f)}\label{eq:convexot}
+     \end{gather}
+\end{frame}
+
+
+\begin{frame}{Pure OT-based methods --- \normalsize Input-convex neural networks (ICNNs)}
+    Convex spaces, such as $\Tilde{\Phi}$ in Eq. (\ref{eq:dualot}), can be parameterized with neural networks convex w.r.t. to the inputs 
+    by setting certain constraints on the parameters of fully connected FFN, $\bm{\theta}=\{\bm{b}_l,\mathbf{W}_l\}_{l=1}^L$.
+    \begin{gather}
+        \bm{h}_{l} \gets \sigma_l(\mathbf{W}_l\bm{h}_{l-1} + \bm{b}_l),l=1,\cdots,L;\quad \bm{h}_L \gets f(\bm{x};\bm{\theta})
+    \end{gather}
+    \begin{itemize}\small
+        \item $\sigma_l$: convex and non-decreasing activation functions
+        \item $\mathbf{W}_l$: therein all elements are constrained to be nonnegative
+    \end{itemize}
+    \bigskip
+    \begin{itemize}
+        \item Any convex function over a convex domain can be approximated in sup norm by an ICNN.
+        % \item ICNNs have been utilized to parameterize Wasserstein gradient flows as well as barycenters.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Pure OT-based methods --- \normalsize Parameterizing OT by ICNNs}
+    The convex functions in Eq. (\ref{eq:convexot}) can be parameterized by ICNNs, 
+    i.e. $g_{\bm{\theta}}$ and $f_{\bm{\phi}}$
+    \begin{align}
+        (g_{\bm{\theta}^*},f_{\bm{\phi}^*}) & \gets \arg\max_{\bm{\phi}}\min_{\bm{\theta}}  \{\- \mathcal{V}_{\mu,\mu'}(g_{\bm{\theta}},f_{\bm{\phi}})
+        \} \\
+        & \quad\quad\quad\text{s.t.} \mathbf{W}_l \geq 0,\ \forall \mathbf{W}_l \in \bm{\theta}\cup\bm{\phi}\, \forall l \\
+        T^* & = \nabla g_{\bm{\theta}^*} 
+        \implies \hat{\bm{x}}_j' = \nabla g_{\bm{\theta}^*}(\bm{x}_j)
+    \end{align}
+    \begin{itemize}\small
+        \item $\bm{X}\sim\mu$: control group; $\bm{X}'\sim\mu'$: treatment group 
+        \item $\bm{\theta},\bm{\phi}$: the set of parameters in ICNNs
+        \item $T^*$: the optimal mapping such that $\mu' = (T^*)_\#\mu$
+    \end{itemize}
+    \medskip
+    \color{gray}{\small
+    In practice, the negative weights constraints of $\bm{\theta}$ usually be relaxed by introducing a penalty on it.
+    \begin{align}
+        \max_{\bm{\phi}:\mathbf{W}_l\geq 0,\forall l}
+        \min_{\bm{\theta}}\ &
+        \left\{
+        \mathbb{E}\left[f_{\bm{\phi}}(\nabla g_{\bm{\theta}}(\bm{X})) - \langle\bm{X},\nabla g_{\bm{\theta}}(\bm{X})\rangle\right] - 
+            \mathbb{E}f_{\bm{\phi}}(\bm{X}') + \lambda R(\bm{\theta})
+        \right\} \\
+        \text{s.t.}\ & R(\bm{\theta})\triangleq \sum_{\mathbf{W}_l\in\bm{\theta}}\|\max(-\mathbf{W}_l,0)\|_F^2
+    \end{align}
+    }
+\end{frame}
+
+\note[enumerate]{
+    \item CellOT then predicts the transformation of a control cell
+}{}
+
+
+\subsection{Benchmark results}
+
+\begin{frame}{Simulation comparisons}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\linewidth]{20240314-Perturbation/simucomp.png}
+        \caption{\texttt{CINEMA-OT} (\texttt{CINEMA-OT-W}) achieves the best performance and shows robustness to differential abundance on the simulation data}
+        \label{fig:simucomp}
+    \end{figure}
+    \begin{enumerate}\small
+        \item \texttt{CINEMA-OT} outperformed other methods in treatment-effect attribution and performed as well as others in other metrics even if the DA ratio became extreme.
+        \item \texttt{CINEMA-OT} performs better when differential abundance level is small (DA ratio $\geq$ 0.75).
+    \end{enumerate}
+    % \footnote{
+    %     ASW and PCR evaluate cell-distribution equalization;
+    %     ITE ARI measures preservation of response clusters;
+    %     ITE PCR evaluate attribution accuracy.
+    %     }
+\end{frame}
+
+\note[enumerate]{
+    \item ASW and PCR evaluate cell-distribution equalization;
+    \item ITE ARI measures preservation of response clusters;
+    \item ITE PCR evaluate attribution accuracy.
+    \item Benchmark data: Alzheimer’s
+    \item New generated data:
+    \begin{itemize}
+        \item Rhinovirus infection
+        \item Human PBMCs combinatorial interferon stimulation
+    \end{itemize}
+}{}
+
+\begin{frame}{Real data comparison}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\linewidth]{20240314-Perturbation/figs/realcomp.png}
+        \caption{Validation of \texttt{CINEMA-OT} on the Sci-Plex4 dataset\footnote{perterbation to 17 drugs on cell lines A549 and MCF7}}
+        \label{fig:realcomp}
+    \end{figure}
+    \begin{itemize}\small
+        \item Treatment: pracinostat (histone deacetylase (HDAC) inhibitor)
+        \item Existing confounder: concentration of acetyl-CoA precursors (exogenous acetate, citrate, and pyruvate)
+    \end{itemize}
+    \medskip
+    \begin{enumerate}\small
+        \item \texttt{CINEMA-OT} separates a confounder space independent to treatment and capturing confounder variation.
+        \item \texttt{CINEMA-OT} is still best under the mentioned metrics individually or comprehensively.
+    \end{enumerate}
+    
+\end{frame}
+
+
+% \subsection{Identification of confounders}
+% \begin{frame}{Determine the number of signals --- \normalsize Rank initialization}
+%     \begin{enumerate}
+%         \item Biwhitening\footnote{\cite{landa_biwhitening_2022} proposed by one of the corresponding authors} the count matrix
+%         \begin{itemize}
+%             \item \textit{Diagonizing} matrix of data on both dimension and \textit{thresholding} based on the Marchenko-Pastur Law\footnote{describing the distribution of eigenvalues of a large random matrices}.
+%             \item Obtaining the true matrix rank and low-dimensional approximation.
+%             \item Specially designed for the distributions with quadratic relation between mean and variance, such as 
+%             Poisson, binomial, negative binomial, gamma, and so on.
+%         \end{itemize}
+%         \item Directly use pre-specified $\text{L+1}\in\{20,\cdots,50\}$, since CINEMA-OT is robust to this rank range practically.
+%     \end{enumerate}
+% \end{frame}
+
+% \begin{frame}{Identification of confounders --- \normalsize ICA and testing}
+%     \begin{enumerate}
+%         \item Ready implementation \texttt{FastICA} in \texttt{sklearn.decomposition} 
+%         is applied to the PCA-transformed input data.\footnote{To make sure the assumption compatibility between the above key assumptions and that of \texttt{FastICA}}
+%         \item Distribution-free testing, Chatterjee’s coefficient,\footnote{implemented in \texttt{XICOR} python package} 
+%         is appled to the components to verify the independence of ICA singals and treatment.
+%         \begin{itemize}
+%             \item threshold 0.05-0.75
+%             \item high threshold: less tolerance to FP treatment signals, leading to local matching
+%             \item low threshold: less tolerance to FP cofounder signals, leading to lower-resolution matching
+%         \end{itemize}
+%     \end{enumerate}
+% \end{frame}
+
+% \begin{frame}{Construction of causal pairs --- \normalsize Optimal transport}
+%     Entropic regularization-based optimal transport\footnote{Solved by Sinkhorn–Knopp algorithm}: 
+%     enable efficient and tractable matching in large-scale biological dataset
+%     \begin{itemize}
+%         \item match cell pairs causally
+%         \item mass preservation, outlier robustness, and boundary effect avoidance.
+%     \end{itemize}
+% \end{frame}
+
+% \begin{frame}{Key outputs}
+%     \begin{enumerate}
+%         \item $M\in\mathbb{R}^{N_1\times N_2}$: Matching correspondence matrix across treatment conditions
+%         \item $\mathbf{X}_{z=1}-\mathbf{X}_{z=0}$: individual treatment effects (ITE)
+%     \end{enumerate}
+% \end{frame}
+
+
+
+
+% \section{Conclusion}
+
+% \begin{frame}{Highlight and Conclusion}
+    
+% \end{frame}
+
+
+
+\section{Discussion}
+% \begin{frame}{Decomposing independence components (non-linearly)}
+%     Conditional (variational) autoencoder decomposes the independent components\footnote{key component in \texttt{scGen}, compositional autoencoder, and \texttt{contrastiveVI}}.
+%     whose decoder (generative model) is
+%     \begin{gather}
+%         \bm{x}\sim\int P_{\bm{\theta}}(\bm{x}|\bm{s}_0,z)P(\bm{s})d\bm{s}
+%     \end{gather}
+%     and the reconstruction loss\footnote{for variational design, a KL divergence is added for Gaussian constraint} is 
+%     \begin{gather}
+%         (\hat{\bm{\theta}},\hat{\bm{s}})=\argmin_{\bm{\theta},\bm{s}}\|F_{\bm{\theta}}(\bm{s}_0,z)-\hat{\bm{x}}\|
+%     \end{gather}
+%     \begin{itemize}
+%         \item $\bm{s}=[\bm{s}_0;z]$,where $\bm{s}_0$ is basal embedding, the embedding of cell distributions from different conditions mixing
+%         \item Gaussian $\bm{s}$ under variational AE design
+%         \item Deterministic $\bm{s}$ under vanilla AE design
+%     \end{itemize}
+% \end{frame}
+
+% \begin{frame}{Decomposing independence components (non-linearly)}
+%     The authors claimed that the NN-based methods for 
+%     \begin{theorem}
+%         Let $\bm{x}\in\mathbb{R}^d$ be a r.v. of any dist., 
+%         then $\exists$ a transformation $F:\mathbb{R}^d\to\mathbb{R}^d$ 
+%         s.t. the components of $\bm{x}':=F(\bm{x})$, $x_j,j=1,\dots,d$ satisfy 
+%         \begin{enumerate}
+%             \item $x_j\vperp x_{j'},\forall j\neq j'$, and
+%             \item $x_j\overset{\text{iid}}{\sim}\mathcal{N}(0,1),j=1,\cdots,d$.
+%             \item In particular, $x_1'$ equals a monotonic transformation of $x_1$.
+%         \end{enumerate}
+%     \end{theorem}
+% \end{frame}
+
+\begin{frame}{Discussion}
+    Highlight:
+    \begin{enumerate}
+        \item \texttt{CINEMA-OT} produces a per-cell view into the effects of treatment and conditions by
+        \begin{enumerate}
+            \item explicitly separating confounder and treatment signals and
+            \item matching the cells at the single-cell level to form causal pairs with similar confounders.
+        \end{enumerate}
+
+        \item \texttt{CINEMA-OT} outperforms other methods in synthetic and real datasets.
+    \end{enumerate}
+
+    \bigskip
+    Challenges
+    \begin{enumerate}
+        \item bias-variance trade-offs in optimal transport
+        \item batch effect hidden in estimated biological perturbation effect
+        \item disability to predict the treatment effect of unmeasured perturbation-cell pairs
+        \item disability to model the changes in confounder distribution brought by treatment
+    \end{enumerate}
+\end{frame}
+
+
+% \section{References}
+\begin{frame}[allowframebreaks]{References}
+    \footnotesize
+    \nocite{}
+    \bibliography{ref}
+    \bibliographystyle{abbrv}
+    % \tiny\bibliographystyle{alpha}
+\end{frame}
+
+
+% }
+
+
+
+
+
+
+% \begin{frame}
+%     \begin{center}
+%         {\Huge\calligra Thanks!}
+%     \end{center}
+% \end{frame}
+
+\end{document}

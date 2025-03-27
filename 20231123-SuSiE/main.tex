@@ -1,0 +1,1148 @@
+\documentclass[10pt]{beamer}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%   Options for notes   %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% \setbeamertemplate{note page}[plain]
+% \setbeameroption{show notes}
+% \setbeameroption{show notes on second screen}
+% \setbeameroption{show only notes}
+% \setbeameroption{show only slides with notes}
+
+\input{preamble}
+\algnewcommand\algorithmicinitialize{\textbf{initialize: }}
+\algnewcommand{\Initialize}[1]{\State \algorithmicinitialize #1}
+
+%     presenter info    %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\author{
+Xiaocheng ZHOU
+}
+\title{
+SuSiE
+}
+\subtitle{
+\ulbf{Su}m of \ulbf{Si}ngle \ulbf{E}ffects 
+-- A simple new approach to variable selection in regression, with application to genetic fine mapping \\ by Wang et al.\footnote{\cite{wang_simple_2020}University of Chicago, USA}, JRSSB (2020)}
+\date{\today}
+\institute{
+Journal Club
+}
+
+\begin{document}
+
+% \kaishu
+\begin{frame}
+    \titlepage
+    % \begin{figure}[htpb]
+    %     \begin{center}
+    %         \includegraphics[width=0.2\linewidth]{pic/CUHKSZ-Logo.pdf}
+    %     \end{center}
+    % \end{figure}
+\end{frame}
+
+
+\note[enumerate]{
+    \item Welcome everyone. 
+    \item Today, I'm excited to discuss a novel method for variable selection in regression, 
+    particularly in the context of genetic fine mapping. 
+    \item This work by Gao Wang and colleagues from the University of Chicago introduces the ``\texttt{SuSiE}'' model, 
+    which stands for Sum of Single Effects, and showcases its application in quantifying uncertainty in variable selection.
+}
+
+
+
+% \section{Preface}
+
+% {\fontsize{9pt}{10pt}
+% \begin{frame}{Paper's info}
+%     \begin{center}
+%         {\Large A simple new approach to variable selection in regression, with application to genetic fine mapping}
+        
+%         \medskip
+        
+%         Gao Wang, Abhishek Sarkar, Peter Carbonetto, and Matthew Stephens
+
+%         \bigskip
+        
+%         University of Chicago, USA
+%     \end{center}
+% \end{frame}
+% }
+
+
+\section{Motivation}
+
+\begin{frame}{Fine-Mapping --- A real scientific problem}
+    \ulbf{Genome-Wide Association Study (GWAS)}: 
+    \begin{itemize}
+        \item find genetic variants associating with the traits from the \textbf{entire genome} 
+        \item result in many (\textbf{highly correlated}) loci of interest, each contributing a small amount to the trait variance
+    \end{itemize}
+
+    \ulbf{Fine-mapping}
+    \begin{itemize}
+        \item focus on \textbf{narrower region of genome} (usually following GWAS)
+        \item pinpoint the \textbf{minimal sets} of causal variants to the trait of interest.
+        \medskip
+        \item The genetic variants can be highly correlated, many up to 0.99-1.
+    \end{itemize}
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.7\linewidth]{20231123-SuSiE/figs/linkagedisequ.pdf}
+        \caption{linkage disequilibrium: certain alleles at two or more loci tend to be inherited together more often than the expected by chance}
+        \label{fig:linkagedisequ}
+    \end{figure}
+\end{frame}
+
+
+
+
+
+
+\begin{frame}{Problem in the variable selections}
+    \begin{enumerate}
+        \item Highly correlated variables are hard to distinguish from each other.
+        \item Scientific conclusions depend on which variables are selected in some applications.
+    \end{enumerate}
+    \medskip
+    \begin{center}
+        \large
+        It is crucial to acknowledge 
+        \ulbf{uncertainty in which variable should be selected}.
+    \end{center}
+    \bigskip
+    \begin{framed}
+        e.g. $\bm{y}\in\mathbb{R}^n$, $\bm{X}=(\bm{x}_1,\cdots,\bm{x}_p)\in\mathbb{R}^{n\times p}$, and $\bm{b}\in\mathbb{R}^{p}$
+        \begin{gather}
+            \bm{y} = \bm{X}\bm{b} + \bm{e}, \quad\bm{e}\sim\mathcal{N}_n(0,\sigma^2\bm{I}_n)\label{eq:toyexample}
+        \end{gather}
+        When $x_1=x_2$ and $x_3=x_4$, to state the \textbf{effect variables} with $b_j\neq 0$,
+        we need inference statement like 
+        \begin{gather}
+            (b_1\neq 0\ \text{or} \ b_2\neq 0)\ and \ (b_3\neq 0\ \text{or}\ b_4\neq 0) \label{eq:targetstatement}
+        \end{gather}
+    \end{framed}
+\end{frame}
+
+\note[enumerate]{
+    \item Variable selection is a complex problem, especially when variables are highly correlated. 
+    \item Traditional methods often struggle with uncertainty in selecting the correct variables. 
+    \item This paper presents a Bayesian framework to tackle this challenge, 
+    providing a more nuanced understanding of variable relationships.
+}
+
+
+
+
+
+
+
+\begin{frame}{Current methods}
+    \begin{enumerate}
+        \item Sparse regression (LASSO or Elastic Net) and controling the FDR: filter all highly correlated variables
+        \item Selecting groups of variable clustered by high correlation: require priori decision or known hierarchy structure
+        \item Bayesian variable selection in regression (BVSR)
+        \begin{itemize}
+            \item provide it with a prior on $\bm{b}$ favoring sparse models
+            \item assess uncertainty in which variables to select by posterior distribution, \textbf{\textit{but}}
+            \medskip
+            \item computationally challenging: assess each combination of variables
+            \item not easily interpretable output \textbf{posterior inclusion distribution} (PIP) and no statement in Equation (\ref{eq:targetstatement}).
+            \begin{gather}
+                \text{marginal PIP for each variable:}\notag\\
+                \text{PIP}_j:=\text{Pr}(b_j\neq 0|\bm{X},\bm{y}) \label{eq:marginalstatement}
+            \end{gather}
+        \end{itemize}
+    \end{enumerate}
+\end{frame}
+
+
+\begin{frame}{Current methods --- \normalsize BVSR methods}
+    Most other Bayesian methods provide posterior on ``models'' by 
+    \begin{itemize}
+        \item enumerating (\texttt{CAVIAR})
+        \item schochastic search (\texttt{FINEMAP} and \texttt{DAP-G}), or
+        \item sampling (\texttt{BIMBAM})
+    \end{itemize}
+    from \textbf{all possible combinations} of variables. 
+    
+    In the example, the ``true'' posterior for models should be
+    \begin{align}
+        p(\beta_1 \ne 0, \beta_2 = 0, \beta_3 \ne 0, \beta_4 = 0, \beta_\text{o/w} = 0) &= 0.25 \label{eq:exep1} \\
+        p(\beta_1 = 0, \beta_2 \ne 0, \beta_3 \ne 0, \beta_4 = 0, \beta_\text{o/w} = 0) &= 0.25 \\
+        p(\beta_1 \ne 0, \beta_2 = 0, \beta_3 = 0, \beta_4 \ne 0, \beta_\text{o/w} = 0) &= 0.25 \label{eq:exep3}\\
+        p(\beta_1 = 0, \beta_2 \ne 0, \beta_3 = 0, \beta_4 \ne 0, \beta_\text{o/w} = 0) &= 0.25.
+    \end{align}
+    \begin{gather}
+        \implies p(\beta_1\ne 0) = (\ref{eq:exep1}) + (\ref{eq:exep3}) = 0.5
+    \end{gather}
+    % \begin{itemize}
+    %     \item \texttt{CAVIAR}: exhaustive all combination of $L$ effects, summary statistics (marginal Z-score and $p\times p$ corr matrix)
+    %     \item \texttt{FINEMAP}: heuristics, summary statistics 
+    %     \item \texttt{DAP-G}: heuristics, fullis  data
+    %     \item \texttt{SuSiE}: full data
+    % \end{itemize}
+    
+\end{frame}
+
+
+\note[enumerate]{
+    \item BVSR can assess uncertainty in which variables to select in the above situation
+    \item requiring implementation of sophisticated MCMC or stochastic searching
+    \item the complex \textbf{posterior inclusion distribution} (PIP) is too complex to easily interpret
+    \begin{gather}
+        \text{marginal PIP for each variable}~\text{PIP}_j:=\text{Pr}(b_j\neq 0|\bm{X},\bm{y})
+    \end{gather}
+}{}
+
+
+
+% \begin{frame}{Challenges}
+%     \begin{itemize}
+%         \item Challenges with correlated variables
+%     \end{itemize}
+% \end{frame}
+
+% \note[enumerate]{
+%     \item Discuss challenges in existing variable selection methods, especially with correlated predictors.
+% }
+
+
+\section{SuSiE}
+
+\subsection{Single Effect model}
+
+\begin{frame}{Credible set}
+    \begin{definition}[Credible set]
+        A \textbf{level $\rho$ credible set}: a subset of variables with $\geq \rho$ probability of containing at least one \textit{effect variable}.
+    \end{definition}
+
+    \bigskip
+    
+    Given $\bm{\alpha}\in\mathcal{S}^p$ 
+    \footnote{probability simplex in $p$-dimensional space: 
+    $\mathcal{S}^p=\{\bm{\pi}\in\mathbb{R}^p_+:\sum_{j=1}^p\pi_j=1\}$}, 
+    then the level $\rho$ credible set is denoted as 
+    \begin{gather}
+        \text{CS}(\bm{\alpha};\rho)
+        \subset \{x_1,\cdots,x_p\}
+    \end{gather}
+
+    To conclude the statement like Equation (\ref{eq:targetstatement}):
+    \begin{enumerate}
+        \item $\bm{\alpha}$ indicating the \uline{probability of that each 
+        is effect variable but not are the other}
+        \item sorting the variables by decreasing $\alpha_j$ and then 
+        \item including variables in the set until their cumulative probability exceeds $\rho$
+    \end{enumerate}
+\end{frame}
+
+
+\note[enumerate]{
+    \item an $\bm{\alpha}$ indicating the \uline{probability of that each is effect variable 
+    but not are the other} is needed
+    \item sorting the variables by decreasing $\alpha_j$ and then including variables in the credible set until their cumulative probability exceeds $\rho$
+}{}
+
+
+\begin{frame}{Single effect regression --- \normalsize Model specification}
+    Assume \textit{exactly one} of the $p$ explanatory variables has a non-zero regression coefficient,
+    \begin{align}
+        \bm{y} & =\bm{Xb} + \bm{e}, \label{eq:sie1}\\
+        \bm{e} & \sim \mathcal{N}_n(\bm{0},\sigma^2\bm{I}_n), \\
+        \bm{b} & = b\bm{\gamma}, \\
+        b & \sim \mathcal{N}_1(0,\sigma^2_0), \\
+        \bm{\gamma} & \sim\text{mult}(1,\bm{\pi}),\quad\bm{\pi}\in\mathcal{S}^p~\text{fixed and known}.\label{eq:sie5}
+    \end{align}
+    
+    \medskip
+    
+    e.g. if $\bm{\gamma}$ such that $\gamma_j=1$ and $\gamma_{j'}=0$ for $j'\neq j$, then the single effect regression can be expressed as
+    \begin{gather}
+        \bm{y} = b\bm{x}_j + \bm{e}.
+    \end{gather}
+\end{frame}
+
+
+\begin{frame}{Single effect regression --- \normalsize Parameters estimations}
+    \begin{enumerate}
+        \item The $\sigma_0^2$ and $\sigma^2$ can be estimated by maximum likelihood given prior of $b$.
+        \begin{gather}
+            \ell_{\text{SER}}(\bm{y};\sigma_0^2,\sigma^2):=\log p(\bm{y}|\bm{X},\sigma_0^2,\sigma^2)\label{eq:sigmaml}
+        \end{gather}
+        \item The \textit{posterior distribution} on $\bm{b}=b\bm{\gamma}$ can be easily computed given $\sigma^2$ and $\sigma_0^2$:
+        \begin{align}
+            [b\mid\bm{X},\bm{y},\sigma^2,\sigma_0^2,\gamma_j=1]
+            & \sim\mathcal{N}_1(\mu_{1,j},\sigma_{1,j}^2)\quad\text{for}\ j=1,\cdots,p, \\
+            [\bm{\gamma}\mid\bm{X},\bm{y},\sigma^2,\sigma^2_0]
+            & \sim\text{mult}(1,\bm{\alpha}),
+        \end{align}
+        where $\bm{\alpha}=(\alpha_1,\cdots,\alpha_p)$ is the vector of PIPs used to generate the credible set.
+        The process of posterior estimation can be noted as
+        \begin{gather}
+            \text{SER}(\bm{X},\bm{y};\sigma^2,\sigma_0^2) := (\bm{\alpha},\bm{\mu}_1,\bm{\sigma}_1^2)
+        \end{gather}
+    \end{enumerate}
+    
+\end{frame}
+
+
+
+
+
+
+\subsection{Sum of Single Effect models}
+
+\begin{frame}{Sum of Single Effect regression --- \normalsize Model specification}
+    Introduce multiple single-effect vectors $\{\bm{b}_1,\cdots,\bm{b}_L\}$ and 
+    construct the overall effect vector $\bm{b}$ as the sum of these single effects:
+    \begin{align}
+        \bm{y} & = \bm{Xb} + \bm{e},\label{eq:susieA1}\\
+        \bm{e} & \sim \mathcal{N}_n(\bm{0},\sigma^2\bm{I}_n),\\
+        \bm{b} & = \sum_{l=1}^L\bm{b}_l,\\
+        \bm{b}_l & = b_l\bm{\gamma}_l, \\
+        b_l & \sim \mathcal{N}_1(0,\sigma_{0l}^2), \\
+        \bm{\gamma}_l & \sim \text{mult}(1,\bm{\pi})\label{eq:susieA6}
+    \end{align}
+    \begin{itemize}
+        \item Each $\bm{\gamma}_l$ can produce a credible set that captures a single effect.
+    \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Sum of Single Effect regression --- \normalsize IBSS}
+    \begin{algorithm}[H]
+        \footnotesize
+        \caption{Iterative Bayesian stepwise selection (IBSS)}\label{alg:ibss}
+        \begin{algorithmic}[1]
+            \Require{data: $\bm{X},\bm{y}$}
+            \Require{number of effects: $L$, and hyperparameters: $\sigma^2$ and $\bm{\sigma}_0^2$}
+            \Require{a function $\text{SER}(\bm{X},\bm{y};\sigma^2,\sigma_0^2)\to(\bm{\alpha},\bm{\mu}_1,\bm{\sigma}_1)$ 
+            that computes the posterior distribution for $\bm{b}_l$ under SER model}
+            \Initialize{posterior means: $\overline{b}_l=\bm{0}$ for $l=1,\cdots,L$}
+            \Repeat
+                \For{$l$ in $1,\cdots,L$}
+                \State $\overline{r}_l\gets \bm{y}-\bm{X}\sum_{l'\neq l}\overline{b}_{l'}$\Comment{\textcolor{gray}{expected residuals without $l$-th single effect}}
+                \State $(\bm{\alpha}_l,\bm{\mu}_{1,l},\bm{\sigma}_{1,l})\gets\text{SER}(\bm{X},\overline{r}_l;\sigma^2,\sigma_{0,l}^2)$
+                \State $\overline{b}_l \gets \bm{\alpha}_l\circ\bm{\mu}_{1,l}$\Comment{\textcolor{gray}{expected $l$-th effect's coefficient}}
+                \EndFor
+            \Until{convergence criterion satisfied}
+            \Return{$\bm{\alpha}_1,\bm{\mu}_{1,1},\sigma_{1,1}^2,\cdots,\bm{\mu}_{1,1},\sigma_{1,1}^2$}
+        \end{algorithmic}
+    \end{algorithm}
+    \begin{enumerate}
+        \item compute residuals by using a \textit{model-averaged} estimate for the regression coefficients
+        \item capture uncertainty about which variable should be selected at each step
+    \end{enumerate}
+\end{frame}
+
+% \begin{frame}{Sum of Single Effect regression --- \normalsize The toy example}
+%      \begin{quote}
+%          See the Slides produced by R Markdown.
+%      \end{quote}
+% \end{frame}
+
+
+\subsection{Justification (Outline)}
+
+\begin{frame}{Justification (Outline) --- \normalsize ELBO \& Optimize $q$}
+    Claim: IBSS is a co-ordinate ascent algorithm for optimizing a \textbf{variational approximation} to $p_{\text{post}}(\bm{b}_{1:L}):=p(\bm{b}_{1:L}|\bm{X},\bm{y};\sigma^2,\bm{\sigma}_0^2)$ 
+        with assumption that $\bm{b}_1,\cdots,\bm{b}_L$ are independent a posteriori ($q(\bm{b}_{1:L}) = \prod_{l=1}^L q_l(\bm{b}_l)$):
+    \begin{align}
+        & ~~~~~ \min_q \infdiv{q}{p_{\text{post}}} \\
+        & \iff \max_q F(q;\bm{X},\bm{y},\sigma^2,\bm{\sigma}_0^2)\hspace{8em}{\text{\color{blue}ELBO}} \\
+        & \iff \max_{q_{1:L}} F(q_{1:L};\bm{X},\bm{y},\sigma^2,\bm{\sigma}_0^2)\hspace{7.1em}{\text{\color{blue}$q_{1:L}$ independent}} \\
+        & \iff \max_{q_l}F(q_{1:L};\bm{X},\bm{y},\sigma^2,\bm{\sigma}_0^2)~\text{for}~l=1,\cdots,L\ {\text{\color{blue}Co-ordinate ascent}}
+    \end{align}
+    With \texttt{SuSiE} Assumptions (\ref{eq:susieA1}-\ref{eq:susieA6}), we have
+    \begin{gather}
+        \argmax_{q_l} F(q_{1:L};\bm{X},\bm{y},\sigma^2,\bm{\sigma}_0^2) = \text{SER}(\bm{X},\overline{\bm{r}}_l,\sigma^2,\bm{\sigma}_{0,l}^2),\label{eq:vaest}
+    \end{gather}
+    where $\overline{\bm{r}}_l:=\bm{y}-\bm{X}\sum_{l'\neq l}\overline{\bm{b}}_{l'}$. 
+    % Obviously, if $x_j=x_k$, then $q(\omega_{j,k}(\bm{q}_1),\cdots,\omega_{j,k}(\bm{q}_L)) = q(\bm{b}_1,\cdots,\bm{b}_L)$.
+\end{frame}
+
+
+\begin{frame}{Justification (Outline) --- \normalsize Estimate $\sigma^2$ and $\bm{\sigma}_0^2$ \& Choice of $L$}
+    Estimate $\sigma^2$ and $\bm{\sigma}_0^2$ over $F(q;\bm{X},\bm{y},\sigma^2,\bm{\sigma}^2_0)$ by EM algorithm as latent variables:
+    \begin{enumerate}
+        \item Estimate $\sigma^2$ by computing the expected RSS;
+        \item Estimate each in $\bm{\sigma}^2_0$ by the maximum likelihood like Equation (\ref{eq:sigmaml}) given above $\sigma^2$.
+    \end{enumerate}
+
+    \bigskip
+    
+    Key inferences are often robust to overstating $L$: 
+    \begin{enumerate}
+        \item extra components result in credible sets with low purity.
+        \item when $L$ is greater than the number of signals in the data, the maximum likelihood estimate of $\sigma^2_{0,l}$ will be 0 or close to 0 for many $l$.%\footnote{automatic relevance determination} 
+    \end{enumerate}
+\end{frame}
+
+\begin{frame}{Justification (Outline) --- \normalsize Identifiability and label switching}
+    For any permutation $\nu:\{1,\cdots,L\}\to\{1,\cdots,L\}$, we have
+    \begin{gather}
+        p(\bm{b}_1,\cdot,\bm{b}_L|\bm{y}) 
+        = p(\bm{b}_{\nu(1)},\cdots,\bm{b}_{\nu(L)}|\bm{y})
+    \end{gather}
+    the posterior mean may not be a sensible estimate for $\bm{b}_1,\cdots,\bm{b}_L$ but an average over the $L!$ modes.
+    However, 
+    \begin{enumerate}
+        \item the variational approximation in Equation (\ref{eq:vaest}) 
+    can produce a good approximation to \textit{one of the permutations} to avoid label switching, and%\footnote{spontaneous symmetry breaking}.
+        \item it is not matter \textit{which one} is used since 
+        \begin{gather}
+            F(q_{\nu(1)},\cdots,q_{\nu(L)};
+            \sigma^2,
+            \bm{\sigma}_{0,\nu(1)}^2,\cdots,\bm{\sigma}_{0,\nu(L)}^2)
+            ~\text{and}\\
+            \bm{b}=\sum_{l=1}^L\bm{b}_l
+        \end{gather}
+        are invariant to relabelling.
+    \end{enumerate}
+\end{frame}
+
+
+
+
+\section{Justification (Detailed)}
+
+\subsection{Uni-variate regression}
+
+\begin{frame}[allowframebreaks]{Uni-variate regression --- \normalsize Basic utilities for estimation (I)}
+    For uni-variate linear regression
+    \begin{gather}
+        \bm{y} = \bm{x}b + \bm{e},\\
+        \bm{e} \sim \mathcal{N}_n(\bm{0},\sigma^2\bm{I}_n),\
+        b\sim\mathcal{N}_1(0,\sigma^2_0)
+    \end{gather}
+    \begin{enumerate}
+        \item Given $\sigma^2$ and $\sigma_0^2$, OLS estimation gives
+        \begin{gather}
+            \hat{b} := (\bm{x}^\mathsf{T}\bm{x})^{-1}\bm{x}^\mathsf{T}\bm{y}
+            \implies \begin{cases}
+                s^2 := \text{Var}(\hat{\beta}) = {\sigma^2}/{\bm{x}^\mathsf{T}\bm{x}} \\
+                z := {\hat{b}}/{s}
+            \end{cases}
+        \end{gather}
+
+        \item Then the posterior for $b$ is $[b\mid\bm{x},\bm{y};\sigma^2,\sigma_0^2]\sim\mathcal{N}_1(\mu_1,\sigma^2_1)$, where
+        \begin{align}
+            \sigma_1^2(\bm{x},\bm{y};\sigma^2,\sigma_0^2) 
+            & := (1/s^2 + 1/\sigma_0^2)^{-1} \\
+            \mu_1(\bm{x},\bm{y};\sigma^2,\sigma_0^2) 
+            & := \frac{\sigma_1^2}{s^2}\hat{b}{\color{gray} + \frac{\sigma_1^2}{\sigma_0^2}\times 0}
+        \end{align}
+        
+        \newpage
+        
+        \item The Bayes Factor (BF) for comparing this model with the null model ($b=0$) is
+        \begin{align}
+            \text{BF}(\bm{x},\bm{y};\sigma^2,\sigma_0^2)
+            & := \frac{p(\bm{y}|\bm{x};\sigma^2,\sigma_0^2)}{p_0(\bm{y};\sigma^2)} \notag\\
+            & = \sqrt{\frac{s^2}{\sigma_0^2 + s^2}}\exp\left\{
+                \frac{z^2}{2}\times\frac{\sigma_0^2}{\sigma_0^2+s^2}
+            \right\},\label{eq:univarbf}
+        \end{align}
+        where $p_0(\bm{y};\sigma^2):=p(\bm{y}|\bm{x};\sigma^2,b=0)$.
+    \end{enumerate}
+\end{frame}
+
+
+
+\subsection{Single effect regression}
+    
+\begin{frame}[allowframebreaks]{Single effect regression --- \normalsize Basic utilities for estimation}
+    For single effect regression (\ref{eq:sie1}-\ref{eq:sie5})
+    \begin{enumerate}
+        \item Given $\sigma^2$ and $\bm{\sigma}_0^2$, \textbf{calculate the posteriors of $b$ and $\bm{\gamma}$}: $\bm{\mu}_1$, $\bm{\sigma}_1^2$ and $\bm{\alpha}$
+        \begin{enumerate}
+            \item $[b\mid\bm{X},\bm{y},\sigma^2,\sigma_0^2,\gamma_j=1] \sim\mathcal{N}_1(\mu_{1,j},\sigma_{1,j}^2)\quad\text{for}\ j=1,\cdots,p$
+            \begin{align}
+                \mu_{1,j} & \gets \mu_1(\bm{x},\bm{y};\sigma^2,\sigma_0^2) \\
+                \sigma^2_{1,j} & \gets \sigma^2_1(\bm{x}_j,\bm{y};\sigma^2,\sigma_0^2)
+            \end{align}
+            
+            \item $[\bm{\gamma}\mid\bm{X},\bm{y},\sigma^2,\sigma^2_0] \sim\text{Mult}(1,\bm{\alpha})$
+            \begin{gather}
+                \alpha_j 
+                 \gets \text{Pr}(\gamma_j=1\mid\bm{X},\bm{y};\sigma^2,\sigma_0^2) = \frac{\pi_j\text{BF}(\bm{x}_j,\bm{y};\sigma^2,\sigma_0^2)}{\sum_{j'=1}^p\pi_{j'}\text{BF}(\bm{x}_{j'},\bm{y};\sigma^2,\sigma_0^2)}\label{eq:alphapost}
+            \end{gather}
+        
+            \item Marginal first and second moments of $b_j$ are
+            \begin{align}
+                \mathbb{E}[b_j\mid\bm{X},\bm{y};\sigma^2,\sigma_0^2] & = \alpha_j\mu_{1,j} \\
+                \mathbb{E}[b_j^2\mid\bm{X},\bm{y};\sigma^2,\sigma_0^2] & = \alpha_j(\sigma_{1,j}^2 + \mu_{1,j}^2)
+            \end{align}
+        \end{enumerate}
+        
+        \item \textbf{Compute credible sets}: $\text{CS}(\bm{\alpha};\rho)$
+        
+        Let $\bm{r}=(r_1,\cdots,r_p)$ be the indices such that $\alpha_{r_1}>\cdots>\alpha_{r_p}$, and 
+        let $S_k$ be the cumulative sum of the $k$ largest PIPs
+        $S_k:=\sum_{j=1}^k\alpha_{r_j}$,
+        then
+        \begin{gather}
+            \text{CS}(\bm{\alpha};\rho) \gets \{
+            r_1,\cdots,r_{k^*}:k^*=\inf\{k:S_k\geq \rho\}
+            \}
+        \end{gather}
+        
+        \medskip
+        
+        \item \textbf{Estimate hyperparameters}: $\sigma^2$ and $\sigma_0^2$
+        
+        \begin{align}
+            \ell_{\text{SER}}(\bm{y}\mid\bm{X};\sigma^2,\sigma_0^2) 
+            & := p(\bm{y}\mid\bm{X};\sigma^2,\sigma_0^2) \notag \\
+            & = p_0(\bm{y}; \sigma^2)\sum_{j=1}^p\pi_j\text{BF}(\bm{x}_j,\bm{y};\sigma^2,\sigma_0^2), \label{eq:serlikelihood}\\
+            (\hat{\sigma}^2,\hat{\sigma}_0^2) & \gets \argmax_{\sigma^2,\sigma_0^2}
+            \log \ell_{\text{SER}}(\bm{y}\mid\bm{X};\sigma^2,\sigma_0^2) \label{eq:sielikelihood},
+        \end{align}
+        where $p_0$ denotes the distribution of $\bm{y}$ under $b=0$ like that in Equation (\ref{eq:univarbf}).
+    \end{enumerate}
+    
+\end{frame}
+
+\begin{frame}{Margin notes (1)}
+    Derive the Equations \eqref{eq:alphapost} and \eqref{eq:serlikelihood}\footnote{Learned from STAT5050}
+    {\small
+    \begin{align}
+        \text{Pr}(\gamma_j=1\mid\bm{X},\bm{y};\sigma^2,\sigma_0^2)
+        & = \frac{p(\bm{y}\mid\bm{X},\gamma_j=1;\sigma^2,\sigma_0^2)\text{Pr}(\gamma_j=1)}
+        {\sum_{j'=1}^pp(\bm{y}\mid\bm{X},\gamma_{j'}=1;\sigma^2,\sigma_0^2)\text{Pr}(\gamma_{j'}=1)}\\
+        & = \frac{\pi_jp(\bm{y}\mid\bm{x}_j;\sigma^2,\sigma_0^2)}{\sum_{j'=1}^p \pi_{j'}p(\bm{y}\mid\bm{x}_{j'};\sigma^2,\sigma_0^2)} \\
+        p(\bm{y}\mid\bm{X};\sigma^2,\sigma_0^2) 
+        & = \sum_{j=1}^p p(\bm{y}\mid\bm{X},\gamma_j=1;\sigma^2,\sigma_0^2)\text{Pr}(\gamma_j=1) \\
+        & = \sum_{j=1}^p \pi_{j}p(\bm{y}\mid\bm{x}_j;\sigma^2,\sigma_0^2) \\
+        & = p_0(\bm{y}; \sigma^2)\sum_{j=1}^p\pi_j\text{BF}(\bm{x}_j,\bm{y};\sigma^2,\sigma_0^2)
+        \end{align}}
+\end{frame}
+
+
+\subsection{Background of EB \& VA}
+
+\begin{frame}{Background of EB \& VA --- \normalsize Justification of IBSS (I)}
+    Considering a generic model
+    \begin{align}
+        \bm{y} & \sim p(\bm{y}\mid\bm{b},\theta) \\
+        \bm{b} & \sim g(\bm{b})
+    \end{align}
+    \begin{itemize}
+        \item $\bm{y}$: observed data
+        \item $\bm{b}$: latent variables of interest
+        \item $g\in\mathcal{G}$: a \textit{unknown} prior for $\bm{b}$
+        \item $\theta\in\Theta$: an additional set of \textit{unknown} parameters to be estimated
+    \end{itemize}
+
+\end{frame}
+
+
+
+\note[enumerate]{
+    \item These two step can be expressed as a single optimization problem
+}{}
+
+
+
+
+\begin{frame}{Background of EB \& VA --- \normalsize Justification of IBSS (II)}
+    By empirical Bayes (EB), we can get the posterior of $\bm{b}$:\footnote{$p_\text{post}$ is parameterized by $g$ and $\theta$.}
+    \begin{align}
+    \begin{cases}
+        (\hat{g}, \hat{\theta}) 
+        & \gets \argmax_{g \in \mathcal{G}, \theta \in \Theta} \ell(\bm{y}; g, \theta) \\
+        \hat{p}_{\text{post}}(\bm{b}) 
+        & \gets p(\bm{b} \mid \bm{y}, \hat{g}, \hat{\theta}) \propto p(\bm{y} \mid \bm{b}, \hat{\theta}) \hat{g}(\bm{b})
+    \end{cases}
+    \end{align}
+    where $\ell(\bm{y}; g, \theta)\triangleq \log \mathbb{E}_{\bm{b}\sim g} p(\bm{y} \mid \bm{b}, \theta)$ is marginal log-likelihood of $\bm{y}$. 
+
+    \begin{gather}
+        \iff (\hat{g}, \hat{\theta},\hat{p}_{\text {post}})  \gets \argmax_{g \in \mathcal{G}, \theta \in \Theta, q} F(g, \theta, q ; \bm{y}), \label{eq:unconstrainteb}
+    \end{gather}
+    where $F(g, \theta, q ; \bm{y})$ is the \textcolor{blue}{ELBO}. (The derivation is in the next page)
+    \begin{align}
+        F(g,\theta,q;\bm{y}) 
+        & := \mathbb{E}_{\bm{b}\sim q} \log p(\bm{y}\mid\bm{b},\theta) + \mathbb{E}_{\bm{b}\sim q}\log\frac{g(\bm{b})}{q(\bm{b})} \label{eq:elbo}\\
+        & = \ell(\bm{y};g,\theta) - \infdiv{q}{p_{post}}
+    \end{align}
+
+\end{frame}
+
+
+
+
+
+
+
+
+
+        
+\begin{frame}{Margin notes (2)}
+
+        The derivation of the ELBO:
+        
+        \begin{align}
+            \ell(\bm{y};g,\theta) 
+            & \triangleq \log p(\bm{y};g,\theta) 
+            = \log\mathbb{E}_{\bm{b}\sim g}p(\bm{y}|\bm{b},\theta) \\
+            & = \log\mathbb{E}_{\bm{b}\sim q} \frac{p(\bm{y}\mid \bm{b},\theta)g(\bm{b})}{q(\bm{q})} \\
+            & \geq \underbrace{\mathbb{E}_{\bm{b}\sim q} \log \frac{p(\bm{y}\mid \bm{b},\theta)g(\bm{b})}{q(\bm{q})}}_{
+            F(g,\theta,q;\bm{y}) = \mathbb{E}_{\bm{b}\sim q} \log p(\bm{y}\mid\bm{b},\theta) + \mathbb{E}_{\bm{b}\sim q}\log\frac{g(\bm{b})}{q(\bm{b})}} \\
+            & = \mathbb{E}_{\bm{b}\sim q} \log\frac{p(\bm{b}\mid\bm{y};g,\theta)p(\bm{y};g,\theta)}{q(\bm{b})} \\
+            & = \log p(\bm{y};g,\theta) - \mathbb{E}_{\bm{b}\sim q} \log\frac{q(\bm{b})}{p(\bm{b}\mid\bm{y};g,\theta)} \\
+            & = \ell(\bm{y};g,\theta) - \infdiv{q}{p_{post}}
+        \end{align}
+
+        % \begin{align}
+        %     F(g, \theta, q ; \bm{y}) & := \ell(\bm{y}; g, \theta)-\infdiv{q}{p_\text{post}},\ \textcolor{blue}{\text{(ELBO)}} \label{eq:elbo}\\
+        %     \infdiv{q}{p} & := \mathbb{E}_{q}\log\frac{q(\bm{b})}{p(\bm{b})}
+        % \end{align}
+
+\end{frame}
+
+
+
+
+
+
+
+
+
+\begin{frame}{Background of EB \& VA --- \normalsize Justification of IBSS (III)}
+    Let's justify the above equivalence: Observe that
+    \begin{enumerate}
+        \item $\ell(\bm{y};g,\theta)\vperp q$, then
+        \begin{gather}
+            q^* \gets \argmax_q F(g,\theta,q;\bm{y}) \\
+            = \argmax_q \infdiv{q}{p_\text{post}}=p_\text{post}(\cdot;g,\theta),
+        \end{gather} 
+
+        \item the minimum of above KL divergence w.r.t arbitrary $q$ is 0 for any given $(g,\theta)$, thus $\max_{q} F(g,\theta,q;\bm{y}) = \ell(\bm{y};g,\theta)$
+        \begin{align}
+            (\hat{g},\hat{\theta}) 
+            & \gets \argmax_{g\in\mathcal{G},\theta\in\Theta}\ell(\bm{y};g,\theta) \\
+            & = \argmax_{g\in\mathcal{G},\theta\in\Theta}\ \max_{q} F(g,\theta,q;\bm{y})
+        \end{align}
+    \end{enumerate}
+
+    \bigskip
+
+    \begin{itemize}
+        \item Empirical Bayes (EB) solution: Equation (\ref{eq:unconstrainteb})
+        \item Variational empirical Bayes (VEB) solution: Equation (\ref{eq:constrainteb})
+        \begin{gather}
+            (\hat{g}, \hat{\theta},\hat{p}_{\text {post}})  \gets \argmax_{g \in \mathcal{G}, \theta \in \Theta, q\in\mathcal{Q}} F(g, \theta, q ; \bm{y}), \label{eq:constrainteb}
+        \end{gather}
+    \end{itemize}
+\end{frame}
+
+
+\note[enumerate]{
+    \item However, the above optimization problem (\ref{eq:unconstrainteb}) of EB is often intractable,
+    which can become tractable by restricting $q\in\mathcal{Q}$ a suitably chosen family of distributions.
+    \item The solution of Equation (\ref{eq:constrainteb}) is called ``Variational empirical Bayes (VEB) solution'', while the unconstrained one of Equation (\ref{eq:unconstrainteb}) is called ``Empirical Bayes (EB) solution''.
+}{}
+
+
+\subsection{Additive effects model}
+
+
+\begin{frame}{Additive effects model --- \normalsize Justification of IBSS (IV)}
+    Consider an additive model $\mathcal{M}$ and its simpler counterparts $\mathcal{M}_l$ for $l=1,\cdots,L$
+    (\texttt{SuSiE} and Single effect regression if denoting $\bm{\mu}_1:=\bm{X}\bm{b}_l$):
+    \begin{align}
+        \mathcal{M}:&\
+        \begin{cases}
+            \bm{y} & = \sum_{l=1}^L\bm{\mu}_l + \bm{e} \\
+            \bm{e} & \sim \mathcal{N}_n(\bm{0},\sigma^2\bm{I}_n) \\
+            \bm{\mu}_l & \sim g_l\quad \text{independently for}\ l = 1,\cdots,L
+        \end{cases} \label{eq:multeff}\\
+        \mathcal{M}_l:&\
+        \begin{cases}
+            \bm{y} & = \bm{\mu}_l + \bm{e} \\
+            \bm{e} & \sim \mathcal{N}_n(\bm{0},\sigma^2\bm{I}_n) \\
+            \bm{\mu}_l & \sim g_l
+        \end{cases}\label{eq:singleff}
+    \end{align}
+\end{frame}
+
+
+
+\begin{frame}{Additive effects model --- \normalsize Justification of IBSS (V)}
+    \textbf{Claim}: $\mathcal{M}$ can be fitted by VEB on each simpler model $\mathcal{M}_l$ 
+    with the restricted family $\mathcal{Q}$ on $\bm{\mu}_{1:L}$ 
+    such that 
+    {\footnotesize
+    \begin{gather}
+        q(\bm{\mu}_1,\cdots,\bm{\mu}_L)=\prod_{l=1}^L q_l(\bm{\mu}_l)~\forall q\in\mathcal{Q}
+    \end{gather}}
+    
+    \medskip
+    
+    By Equation (\ref{eq:elbo}), the ELBO can be expressed as
+    {\footnotesize
+    \begin{align}
+        & ~ F(g, \sigma^2, q ; \bm{y}) 
+         {\color{gray}:= \mathbb{E}_{\bm{b}\sim q} \log p(\bm{y}\mid\bm{b},\theta) + \mathbb{E}_{\bm{b}\sim q}\log\frac{g(\bm{b})}{q(\bm{b})}} \notag \\
+        = & ~ -\frac{n}{2}\log(2\pi\sigma^2) 
+        - \frac{1}{2\sigma^2}\underbrace{\mathbb{E}_{q}\left[\|\bm{y} - \sum_{l=1}^L\bm{\mu}_l\|^2\right]}_{\text{expected RSS (ERSS)}} 
+        + \sum_{l=1}^L\mathbb{E}_{q_l}\left[\log\frac{g_l(\bm{\mu}_l)}{q_l(\bm{\mu}_l)}\right] \label{eq:elboadditive}
+    \end{align}}
+\end{frame}
+
+
+
+
+
+
+\begin{frame}{Additive effects model --- \normalsize Justification of IBSS (VI)}
+    % \begin{algorithm}[H]
+    %     \footnotesize
+    %     \caption{\small Coordinate ascent for fitting $\mathcal{M}$ by VEB (outline)}\label{alg:cooasoutline}
+    %     \begin{algorithmic}[1]
+    %         \Repeat
+    %             \For{$l$ in $1,\cdots,L$}
+    %             \State $(q_l,g_l)\gets \argmax_{q_l,g_l} F(q,g,\sigma^2;\bm{y})$
+    %             \EndFor
+    %             $\sigma^2\gets\argmax_{\sigma^2}F(q,g,\sigma^2;\bm{y})$
+    %         \Until{convergence criterion satisfied}
+    %     \end{algorithmic}
+    % \end{algorithm}
+    \begin{itemize}
+        \item \textbf{Estimate $\sigma^2$} by expected RSS.\footnote{learned from STAT5050: EM algorithm}
+    \end{itemize}
+    \begin{align}
+        \text{ERSS} 
+        & = \mathbb{E}_{q}\left[\|\bm{y} - \sum_{l=1}^L\bm{\mu}_l\|^2\right] \notag\\
+        & = \|\bm{y}-\sum_{l=1}^L\mathbb{E}_{q_l}{\bm{\mu}}_l\|^2 + \sum_{l=1}^L\sum_{i=1}^n\text{Var}_{q_l}[\mu_{l,i}],
+    \end{align}
+    where $\text{Var}_{q_l}[\mu_{l,i}]=\underbrace{\mathbb{E}_{q_l}[\mu_{l,i}^2]}_{\overline{\mu^2}_{l,i}} - [\underbrace{\mathbb{E}_{q_l}[\mu_{l,i}]}_{\overline{\mu}_{l,i}}]^2$.\footnote{
+    In \texttt{SuSiE}, 
+    $\overline{\mu}_{l,i} = \mathbb{E}[\bm{x}_{i}^\mathsf{T}\bm{b}_{l}] = \bm{x}_{i}^\mathsf{T}\overline{\bm{b}}_{l}$,
+    $\overline{\mu^2}_{l,i} = \mathbb{E}[[\bm{x}_{i}^\mathsf{T}\bm{b}_{l}]^2] = {\bm{x}^{2}_{i}}^\mathsf{T}\overline{\bm{b}^2}_{l}$}
+    Then by the derivative of Equation (\ref{eq:elboadditive}) over $\sigma^2$, we have
+    
+    \begin{gather}
+        \hat{\sigma}^2 \gets \frac{\text{ERSS}(\bm{y},\overline{\bm{\mu}},\overline{\bm{\mu}^2})}{n}
+    \end{gather}
+
+\end{frame}
+
+
+
+
+
+\begin{frame}{Additive effects model --- \normalsize Justification of IBSS (VII)}
+    \begin{itemize}
+        \item \textbf{Estimate $q_l$ and $g_l$} for $l=1,\cdots,L$
+    \end{itemize}
+    
+    \begin{align}
+        \overline{\bm{r}}_l := \mathbb{E}_q[\bm{r}_l] 
+        & := \mathbb{E}_q[\bm{y}-\sum_{l'\neq l}\bm{\mu}_{l'}] = \bm{y} - \sum_{l'\neq l}\overline{\bm{\mu}}_{l'} \\
+        F_l(q_l,g_l,\sigma^2;\bm{y}) 
+        & := -\frac{n}{2}\log(2\pi\sigma^2) - \frac{1}{2\sigma^2}\mathbb{E}_{q_l}[\|\bm{y}-\bm{\mu}_l\|^2] \notag\\
+        & ~~~ + \mathbb{E}_{q_l}\log\left[\frac{g_l(\bm{\mu}_l)}{q_l(\bm{\mu}_l)}\right],
+    \end{align}
+    where $F_l$ is the ELBO of $\mathcal{M}_l$.
+
+    \medskip
+    
+    Then
+    \begin{gather}
+        (q_l,g_l) \gets \argmax_{q_l,g_l} F(q,g,\sigma^2;\bm{y}) = \argmax_{q_l,g_l} F_l(q_l,g_l,\sigma^2;\overline{\bm{r}}_l)
+    \end{gather}
+\end{frame}
+
+
+
+
+
+
+
+\begin{frame}{Margin notes (3)}
+    \begin{gather}
+        (q_l,g_l) \gets \argmax_{q_l,g_l} F(q,g,\sigma^2;\bm{y}) = \argmax_{q_l,g_l} F_l(q_l,g_l,\sigma^2;\overline{\bm{r}}_l)
+    \end{gather}
+    
+    \medskip
+    
+    \textbf{Proof}:
+    {\footnotesize
+    \begin{align}
+        F(q,g,\sigma^2;\bm{y}) 
+        & = -\frac{1}{2\sigma^2}\mathbb{E}_q[\|\bm{r}_l-\bm{\mu}_l\|^2] 
+        + \mathbb{E}_{q_l}\left[\log\frac{g_l(\bm{\mu})}{q_l(\bm{\mu}_l)}\right] 
+        + \text{const}(q_l,g_l) \\
+        & = -\frac{1}{2\sigma^2}\mathbb{E}_q[-2\bm{r}_l^\mathsf{T}\bm{\mu}_l + \bm{\mu}_l^\mathsf{T}\bm{\mu}_l] 
+        + \mathbb{E}_{q_l}\left[\log\frac{g_l(\bm{\mu})}{q_l(\bm{\mu}_l)}\right] 
+        + \text{const}(q_l,g_l) \\
+        & = -\frac{1}{2\sigma^2}\mathbb{E}_{q_l}[-2\overline{\bm{r}}_l^\mathsf{T}\bm{\mu}_l + \bm{\mu}_l^\mathsf{T}\bm{\mu}_l] 
+        + \mathbb{E}_{q_l}\left[\log\frac{g_l(\bm{\mu})}{q_l(\bm{\mu}_l)}\right] 
+        + \text{const}(q_l,g_l) \\
+        & = F_l(q_l,g_l,\sigma^2;\overline{\bm{r}}_l) + \text{const}(q_l,g_l)
+    \end{align}}
+\end{frame}
+
+
+
+
+
+\subsection{Algorithm}
+
+
+\begin{frame}{IBSS Algorithm (extended)}
+    \begin{algorithm}[H]
+        \footnotesize
+        \caption{Iterative Bayesian stepwise selection (IBSS)}\label{alg:ibssext}
+        \begin{algorithmic}[1]
+            \Require{data: $\bm{X},\bm{y}$}
+            \Require{number of effects: $L$, and initial estimates of hyperparameters: $\sigma^2$ and $\bm{\sigma}_0^2$}
+            \Require{a function $\text{SER}(\bm{X},\bm{y};\sigma^2,\sigma_0^2)\to(\bm{\alpha},\bm{\mu}_1,\bm{\sigma}_1)$ 
+            that computes the posterior distribution for $\bm{b}_l$ under SER model}
+            \Initialize{posterior means: $\overline{b}_l$ for $l=1,\cdots,L$}
+            \Repeat
+                \State{$\overline{\bm{r}}\gets \bm{y}-\bm{X}\sum_{l=1}^L\overline{\bm{b}}_l$}\Comment{\textcolor{gray}{expected residuals}}
+                \For{$l$ in $1,\cdots,L$}
+                \State $\overline{r}_l\gets \overline{\bm{r}} + \bm{X}\overline{b}_l$\Comment{\textcolor{gray}{expected residuals without $l$-th single effect}}
+                \State $\sigma^2_{0,l}\gets\argmax_{\sigma^2_{0,l}}\ell_{\text{SER}}(\overline{\bm{r}}_l;\sigma^2_{0,l},\sigma^2)$\Comment{\textcolor{gray}{EB update of $\sigma_{0,l}^2$}}
+                \State $(\bm{\alpha}_l,\bm{\mu}_{1,l},\bm{\sigma}_{1,l})\gets\text{SER}(\bm{X},\overline{\bm{r}}_l;\sigma^2,\sigma_{0,l}^2)$
+                \State $\overline{\bm{b}}_l \gets \bm{\alpha}_l\circ\bm{\mu}_{1,l}$\Comment{\textcolor{gray}{posterior expectation}}
+                \State $\overline{\bm{b}^2}_l\gets\bm{\alpha}_l\circ(\bm{\sigma}_{1,l}^2 + \bm{\mu}^2_{1,l})$\Comment{\textcolor{gray}{posterior 2nd moment}}
+                \State $\overline{\bm{r}}\gets\overline{\bm{r}}_l-\bm{X}\overline{\bm{b}}_l$\Comment{\textcolor{gray}{Update expected residuals}}
+                \EndFor
+            \State $\sigma^2\gets\text{ERSS}(\bm{y},\overline{\bm{b}},\overline{\bm{b}^2})/n$
+            \Until{convergence criterion satisfied}
+            \Return{$\bm{\alpha}_1,\bm{\mu}_{1,1},\sigma_{1,1}^2,\cdots,\bm{\mu}_{1,1},\sigma_{1,1}^2$}
+        \end{algorithmic}
+    \end{algorithm}
+
+\end{frame}
+
+
+
+\section{Numerical Comparison}
+
+\subsection{The toy example$^*$}
+
+\begin{frame}{The toy example --- \normalsize Warm up}
+    \begin{quote}
+        \large
+        \textbf{See the slides generated by R Markdown.}
+    \end{quote}
+\end{frame}
+
+
+
+\subsection{Fine-mapping of eQTLs}
+
+
+
+\begin{frame}{Fine mapping of expression QTLs --- \normalsize What is eQTLs?}
+    \begin{itemize}
+        \item Quantitative trait loci (QTLs): location on DNA that
+        \begin{itemize}
+            \item are associated with a particular phenotypic trait that varies in degree
+            \item can be attributed to the influence of two or more genes
+        \end{itemize}
+    \end{itemize}
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=.75\linewidth]{20231123-SuSiE/figs/simu_scheme.pdf}
+        \caption{How eQTLs data are collected}
+        \footnotesize
+        TSS: transcription start site; SNP: Single-nucleotide polymorphism.
+        \label{fig:simu_scheme}
+    \end{figure}
+\end{frame}
+
+
+\begin{frame}{Fine mapping of expression QTLs --- \normalsize Simulation scheme}
+    \begin{itemize}
+        \item \textbf{Given} real genotype matrices: $\bm{X}\in\mathbb{R}^{N\times p}$ for a certain gene
+        \item \textbf{Given} number of effect size: $S$, and proportion of variance in $\bm{y}$ explained by $\bm{X}$: $\phi$
+        \begin{enumerate}
+            \item $\mathcal{S}\gets\text{Sample}(1:p, S)$ uniformly;
+            \item $b_j\gets\begin{cases}
+                \mathcal{N}(0,0.6^2) & j \in \mathcal{S} \\
+                0 & j \notin \mathcal{S}
+            \end{cases}$;
+            \item $\sigma^2\gets \text{Solve}\{\phi=\text{Var}(\bm{Xb})/(\sigma^2 + \text{Var}(\bm{Xb}))\}$;
+            \item $y_i\gets \bm{x}_i^\mathsf{T}\bm{b} + \mathcal{N}(0,\sigma^2)$.
+        \end{enumerate}
+        \item \textbf{Return} true effect size: $\bm{b}$ and simulated expression level: $\bm{y}$
+    \end{itemize}
+    
+    \medskip
+
+    \begin{table}[H]
+        \centering
+        \caption{Simulation scheme}
+        150 genes and 2 replicates for each setting
+        \label{tab:simusche}
+        \begin{tabular}{ccccc}
+        \toprule
+            Scheme & $p$ & $S$ & $\phi$ & \#dataset \\
+            \midrule
+            1 & 1000 & $\{1,\cdots,5\}$ & $\{0.05,0.1,0.2,0.4\}$ & 6000 \\
+            2 & 3000-12000 & 10 & 0.3 & 300 \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+\end{frame}
+
+
+
+
+\note[enumerate]{
+    \item $\text{Power} = \frac{\text{TP}}{\text{TP}+\text{FN}} = \text{Recall}$
+}{}
+
+
+\subsection{A typical simulation example$^*$}
+
+\begin{frame}{A typical simulation example$^*$ --- \normalsize Get familiar with the real-word problem}
+    \begin{quote}
+        \large
+        \textbf{See the slides generated by R Markdown.}
+    \end{quote}
+\end{frame}
+
+
+\subsection{Results on the paper}
+
+
+\begin{frame}{glimpse of IBSS solving challenging problem}
+    \begin{enumerate}
+        \item A SNP has moderate correlation with both effect variables, then
+        have strongest marginal association.
+        \item ISBB captures the two true signals from highly correlated variables.
+    \end{enumerate}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\linewidth]{20231123-SuSiE/figs/challeng_example.pdf}
+        \caption{A glimpse of IBSS solving challenging problem of SMA}
+        {\footnotesize
+        (a) $-\log p$ by univariate regression;
+        (b) the first iteration;
+        (c) the 10th iteration.
+        SMA: strongest marginal association
+        }
+        \label{fig:challeng_example}
+    \end{figure}
+
+\end{frame}
+
+
+\begin{frame}{Posterior inclusion probabilities}
+    \begin{enumerate}
+        \item All methods accurately compute PIPs for all settings, or
+        \item PIPs, the criterion itself, is robust to the model assumptions.
+    \end{enumerate}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\linewidth]{20231123-SuSiE/figs/pip_corr.pdf}
+        \caption{Consistency of PIPs among BVSR methods}
+        {\footnotesize
+        The correlations of PIPs between SuSiE and other methods are high (0.94\~1), robustly across different simulation settings.
+        }
+        \label{fig:pip_corr}
+    \end{figure}
+\end{frame}
+
+
+
+
+\begin{frame}{Posterior inclusion probabilities}
+    \begin{enumerate}
+        \item By power-FDR curve, SuSiE is always slightly better than the other methods.
+    \end{enumerate}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\linewidth]{20231123-SuSiE/figs/power.pdf}
+        \caption{power-FDR curves for different simulation settings}
+        {\footnotesize
+        power = recall, precision = 1 - FDR, then the curve is equivalent to PRC
+        }
+        \label{fig:power}
+    \end{figure}
+\end{frame}
+
+
+
+
+
+
+
+\begin{frame}{Credible set coverage}
+    Under level 95\% credible sets produced by \texttt{SuSiE} and \texttt{DAP-G},
+    \begin{itemize}
+        \item they produce credible sets with similar coverage but
+        \item the CS from \texttt{SuSiE} are consistently an improvement:
+        \begin{itemize}
+            \item Higher empirical coverage level\footnote{the proportion of credible sets that contain an effect variable}
+            \item Higher power
+            \item Smaller size
+            \item Higher average correlation within CS
+        \end{itemize}
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.85\linewidth]{20231123-SuSiE/figs/multiple_criteria.pdf}
+        \caption{Comparison between SuSiE and DAP-G under distinct effect numbers given 95\% CS}
+        \label{fig:comparison-credible_set}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Computational efficiency}
+    \begin{enumerate}
+        \item SuSiE is much more faster than the other BVSR methods, which search the combination of variables.
+        \item $^*$Under certain assumption of model, SuSiE can give analytical result.
+    \end{enumerate}
+
+    \medskip
+    
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\linewidth]{20231123-SuSiE/figs/effeciency.png}
+        \caption{Run times from data sets simulated with SD3}
+        {\footnotesize
+        computational complexity of \texttt{SuSiE} = $O(npL)$, linearly growth with data scale
+        }
+        \label{fig:efficiency}
+    \end{figure}
+\end{frame}
+
+% \begin{frame}{Comparison with hierarchical testing}
+    
+% \end{frame}
+
+
+\note[enumerate]{
+    \item Quantitative Trait Loci (QTLs) are regions of DNA that are associated with a particular phenotypic trait that varies in degree and can be attributed to the influence of two or more genes. These traits are typically measured on a continuous scale and are influenced by both genetic and environmental factors.
+
+    \item Variable selection methods can identify the most relevant genetic variants from among potentially tens of thousands of candidates. Given the complexity of genetic data and the presence of noise, sparsity, and high correlation between genetic markers, advanced statistical techniques like \texttt{SuSiE} enable researchers to pinpoint the loci that actually influence the trait, thereby improving the understanding of the genetic architecture of complex traits.
+}{}
+
+
+% \subsection{Real data application}
+
+% \begin{frame}{Real data application}
+%     Detect SNPs influencing splicing (splice QTLs): given a intron $i$,
+%     \begin{itemize}
+%         \item $\bm{y}^{i}\in\mathbb{R}^n$: a ratio of how often a intron ($i$) is used relatively to the others ($i'\neq i$) in the same gene for $n$ subjects.
+%         \item $\bm{X}^{i}\in\{0,1,2\}^{n\times p}$: fine-mapped $p$ SNPs within 100 kilobases of the intron $i$ for the $n$ subjects.
+%         \item $n=87,p\approx 600,i=1,2,\cdots,77345$.
+%     \end{itemize}
+%     \begin{figure}
+%         \centering
+%         \includegraphics[width=0.75\linewidth]{20231123-SuSiE/figs/fmapping.pdf}
+%         \caption{Caption}
+%         \label{fig:fmapping}
+%     \end{figure}
+% \end{frame}
+
+\subsection{Beyond fine mapping}
+
+\begin{frame}{Beyond fine mapping --- \normalsize change point detection}
+    Consider the simple change point model
+    \begin{align}
+        y_t & =\mu_t + e_t,\quad t=1,\cdots,T \\
+        e_t & \mathcal{N}(0,\sigma^2) \\
+        \bm{\mu} & := (\mu_1,\cdots,\mu_T)\quad \text{piece-wise constant}\\
+        t & \ \text{is change point if}\ \mu_t\neq\mu_{t+1}
+    \end{align}
+
+    It is equivalent to 
+    $\bm{y} = \bm{X}\bm{b} + \bm{e}$ if constructing a design matrix $\bm{X}$ with step function $x_{t,j}=0$ if $t\leq j$ otherwise $1$\footnote{$y$ is centralized implies $\mu_1=0$}
+    \begin{gather}
+        \bm{X} = \begin{bmatrix}
+            0 & 0 & 0 & \cdots & 0 \\
+            1 & 0 & 0 & \cdots & 0 \\
+            1 & 1 & 0 & \cdots & 0 \\
+            \vdots & \vdots & \vdots & \ddots & \vdots \\
+            1 & 1 & 1 & \cdots & 1
+        \end{bmatrix}, \bm{b} = \begin{bmatrix}
+            \mu_2 - \mu_1 \\
+            \mu_3 - \mu_2 \\
+            \mu_4 - \mu_3 \\
+            \vdots \\
+            \mu_T - \mu_{T-1}
+        \end{bmatrix}
+    \end{gather}
+    
+\end{frame}
+
+
+
+\begin{frame}{Beyond fine mapping --- \normalsize change point detection}
+    \begin{enumerate}
+        \item SuSiE can find the change points and give uncertainty about them, but
+        \item it may fall into local minimum if the prior is improper.
+    \end{enumerate}
+
+    \medskip
+    
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\linewidth]{20231123-SuSiE/figs/change_point.pdf}
+        \caption{Change point detection}
+        \label{fig:change_point}
+    \end{figure}
+\end{frame}
+
+
+\section{Discussion}
+
+\begin{frame}{Discussion}
+    \begin{itemize}
+        \item \textbf{Advantages} compared to current BVSR methods
+        \begin{enumerate}
+            \item computational efficiency
+            \item provide credible sets summarizing uncertainty in which variables should be selected
+            \item superior performance in fine-mapping applications
+        \end{enumerate}
+
+        \bigskip
+
+        \item \textbf{Highlights}
+        \begin{enumerate}
+            \item \textbf{additive structure} is the key to the variational approximations, enabling to apply any simple models that exact Bayesian calculations are tractable.
+            \item \textbf{backfitting} strategy estimated hyperparameters directly.
+        \end{enumerate}
+        
+    \end{itemize}
+\end{frame}
+
+
+
+
+\section{References}
+\begin{frame}{References}
+    \footnotesize
+    \nocite{}
+    \bibliography{ref}
+    \bibliographystyle{abbrv}
+    % \tiny\bibliographystyle{alpha}
+\end{frame}
+
+
+% }
+
+
+
+
+
+
+% \begin{frame}
+%     \begin{center}
+%         {\Huge\calligra Thanks!}
+%     \end{center}
+% \end{frame}
+
+\end{document}
