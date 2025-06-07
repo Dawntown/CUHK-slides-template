@@ -1,0 +1,94 @@
+\documentclass[10pt]{beamer}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%   Options for notes   %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% \setbeamertemplate{note page}[plain]
+% \setbeameroption{show notes}
+% \setbeameroption{show notes on second screen}
+% \setbeameroption{show only notes}
+% \setbeameroption{show only slides with notes}
+
+\input{preamble}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%     presenter info    %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\author{
+Your Name
+}
+\title{
+Your Title
+}
+\subtitle{
+Your Subtitle
+}
+\institute{
+Your Institute
+}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+    \titlepage
+    % \begin{figure}[htpb]
+    %     \begin{center}
+    %         \includegraphics[width=0.2\linewidth]{pic/CUHKSZ-Logo.pdf}
+    %     \end{center}
+    % \end{figure}
+\end{frame}
+
+\section{Section Title}
+
+\begin{frame}{Frame Title}
+    \begin{itemize}
+        \item Your content here
+    \end{itemize}
+    
+    \begin{figure}
+        \centering
+        % \includegraphics[width=0.9\textwidth]{figs/your-figure.pdf}
+        \caption{Your caption}
+        \label{fig:your-label}
+    \end{figure}
+\end{frame}
+
+\note[enumerate]{
+    \item Your notes here
+}
+
+\begin{frame}{Frame Title}
+    \begin{enumerate}
+        \item Your content here
+    \end{enumerate}
+    
+    \begin{center}
+        \large
+        \boxed{\makecell{Your boxed content}}
+    \end{center}
+\end{frame}
+
+\note[enumerate]{
+    \item Your notes here
+}
+
+\section{Another Section}
+
+\begin{frame}{Frame Title}
+    \centering
+    Your centered content here
+    
+    \begin{figure}
+        \centering
+        % \includegraphics[width=0.85\textwidth]{figs/your-figure.pdf}
+        \caption{Your caption}
+        \label{fig:your-label}
+    \end{figure}
+\end{frame}
+
+\note[enumerate]{
+    \item Your notes here
+}
+
+\end{document}
