@@ -1,0 +1,62 @@
+# LaTeX temporary files
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.vrb
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.bbl
+*.blg
+*.dvi
+*.lof
+*.lot
+*.idx
+*.ilg
+*.ind
+*.acn
+*.acr
+*.alg
+*.glg
+*.glo
+*.gls
+*.ist
+*.maf
+*.mtc
+*.mtc0
+*.slg
+*.slo
+*.sls
+*.run.xml
+*.synctex*
+*.xdv
+
+# PDF output
+*.pdf
+
+# Backup files
+*~
+*.bak
+*.swp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor temporary files
+*.sublime-workspace
+*.sublime-project
+.vscode/
+.idea/
+
+# Build directories
+build/
+output/ 

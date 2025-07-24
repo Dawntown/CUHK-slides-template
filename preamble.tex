@@ -1,0 +1,90 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%    useful packages    %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% \usepackage{ctex, hyperref}
+\usepackage{hyperref}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{framed}
+\usepackage{multicol}
+\usepackage{ragged2e}
+\justifying\let\raggedright\justifying
+% other packages
+\usepackage[export]{adjustbox}
+\usepackage{latexsym,booktabs,calligra,xcolor}
+\usepackage{graphicx,pstricks,listings,stackengine}
+\usepackage{makecell}
+\usepackage{CUHK}
+\usepackage{algorithm,algpseudocode}
+
+
+\usepackage{amsmath,amsfonts,mathtools,amsthm,amssymb}
+\usepackage{pifont}
+\usepackage{bm,ulem}
+\usepackage{empheq}
+\newcommand*\widefbox[1]{\fbox{\hspace{2em}#1\hspace{2em}}}
+\usepackage[font=scriptsize]{caption}
+\usepackage{advdate}
+\usepackage{extarrows}
+\usepackage{subcaption}
+\usepackage{bbm}
+% \usepackage[superscript,biblabel]{cite}
+\usepackage[super,square]{natbib}
+
+\let\implies\Rightarrow
+\let\impliedby\Leftarrow
+\let\iff\Leftrightarrow
+\let\epsilon\varepsilon
+\newcommand{\cmark}{\ding{51}}%
+\newcommand{\xmark}{\ding{55}}%
+
+
+% KL divergence
+\DeclarePairedDelimiterX{\infdivx}[2]{(}{)}{%
+  #1\;\delimsize\|\;#2%
+}
+\newcommand{\infdiv}{D_{\mathbb{KL}}\infdivx}
+\DeclarePairedDelimiter{\norm}{\lVert}{\rVert}
+
+% argmin max
+\DeclareMathOperator*{\argmax}{\arg\!max}
+\DeclareMathOperator*{\argmin}{\arg\!min}
+\DeclareMathOperator*{\mean}{mean}
+\DeclareMathOperator*{\vperp}{\text{\rotatebox{90}{$\models$}}}
+\DeclareMathOperator*{\diag}{diag}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% user-defined commands %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% \renewenvironment{cases}[1][l]{\matrix@check\cases\env@cases{#1}}{\endarray\right.}
+\def\cmd#1{\texttt{\color{red}\footnotesize $\backslash$#1}}
+\def\env#1{\texttt{\color{blue}\footnotesize #1}}
+\def\ulbf#1{\textbf{\underline{#1}}}
+\def\todo#1{\large\color{red}\textit{#1}}
+\xdefinecolor{cuhksz1}{rgb}{0.457,0.0585,0.42578}      %RGB(117,15,109)
+\xdefinecolor{cuhksz2}{rgb}{0.86328,0.63671875,0}      %RGB(221,163,0)
+\xdefinecolor{cuhksz3}{rgb}{0.953125,0.87109,0.6875}   %RGB(244,223,176)
+
+
+\definecolor{deepred}{rgb}{0.6,0,0}
+\definecolor{frenchblue}{rgb}{0.0, 0.25, 0.63}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    keywordstyle=\bfseries\color{cuhksz1},
+    emphstyle=\ttfamily\color{deepred},    % Custom highlighting style
+    stringstyle=\color{cuhksz2},
+    numbers=left,
+    numberstyle=\small\color{cuhksz3},
+    rulesepcolor=\color{red!20!green!20!blue!20},
+    frame=shadowbox,
+}
+
+\newcommand{\advanceday}[1][14]{
+\begingroup
+\AdvanceDate[#1]
+\today
+\endgroup
+}

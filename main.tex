@@ -1,0 +1,210 @@
+\documentclass[10pt]{beamer}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%   Options for notes   %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% \setbeamertemplate{note page}[plain]
+\setbeameroption{show notes}
+% \setbeameroption{show notes on second screen}
+% \setbeameroption{show only notes}
+% \setbeameroption{show only slides with notes}
+
+% Chinese support
+\usepackage{ctex, hyperref}
+\usepackage[T1]{fontenc}
+
+\input{preamble}
+\algnewcommand\algorithmicinitialize{\textbf{initialize: }}
+\algnewcommand{\Initialize}[1]{\State \algorithmicinitialize #1}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%     presenter info    %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\author{
+Your Name
+}
+\title{
+Template Usage Examples
+}
+\subtitle{
+A demonstration of CUHK Beamer template features
+}
+\institute{
+Your Institute
+}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+    \titlepage
+    % \begin{figure}[htpb]
+    %     \begin{center}
+    %         \includegraphics[width=0.2\linewidth]{pic/CUHKSZ-Logo.pdf}
+    %     \end{center}
+    % \end{figure}
+\end{frame}
+
+\section{Template Features}
+
+\begin{frame}{1. Speaker Notes}
+    This slide demonstrates how to use speaker notes.
+    
+    \begin{itemize}
+        \item Regular content appears on the presentation
+        \item Notes appear only in the notes view
+    \end{itemize}
+\end{frame}
+
+\note[enumerate]{
+    \item This is a speaker note
+    \item Notes can be used for additional information
+    \item Enable notes by uncommenting in the preamble
+}
+
+\begin{frame}{2. Mathematical Notation}
+    Rich mathematical support:
+    \begin{align}
+        \bm{P}^*=\argmin_{\bm{P}\in\mathbb{R}_+^{m\times n}} & ~ \langle\bm{P},\bm{C}\rangle_\mathsf{F} \\
+        \text{s.t.} & ~ \bm{P1}_n = \bm{s},~ \bm{P}^\mathsf{T}\bm{1}_m = \bm{d}
+    \end{align}
+    
+    Common operators: $\argmin$, $\argmax$, $\infdiv{\bm{P}}{\bm{Q}}$
+\end{frame}
+
+\note[enumerate]{
+    \item Mathematical notation is typeset using amsmath
+    \item Special operators are predefined in preamble.tex
+}
+
+\begin{frame}{3. Bilingual Support}
+    \begin{itemize}
+        \item English content example
+        \item 中文内容示例
+        \item Mixed content example
+    \end{itemize}
+    
+    \begin{center}
+        \large
+        \boxed{\makecell{Multi-line\\Content}}
+    \end{center}
+\end{frame}
+
+\note[enumerate]{
+    \item Template supports both Chinese and English
+    \item Use fontspec package for Chinese support
+}
+
+\begin{frame}{4. CUHK Colors}
+    University color scheme:
+    \begin{itemize}
+        \item \textcolor{cuhk1}{Primary Color (cuhk1)}
+        \item \textcolor{cuhk2}{Secondary Color (cuhk2)}
+        \item \textcolor{cuhk3}{Tertiary Color (cuhk3)}
+    \end{itemize}
+    
+    \begin{center}
+        \boxed{\textcolor{cuhk1}{Colored Boxed Text}}
+    \end{center}
+\end{frame}
+
+\note[enumerate]{
+    \item Colors are defined in CUHK.sty
+    \item Use \textbackslash textcolor\{cuhk1\}\{text\} for coloring
+}
+
+\begin{frame}{5. Common Environments}
+    \begin{columns}
+        \column{0.5\textwidth}
+        Boxed text:
+        \begin{center}
+            \boxed{\makecell{Multi-line\\boxed content}}
+        \end{center}
+        
+        \column{0.5\textwidth}
+        Figure example:
+        \begin{figure}
+            \centering
+            % \includegraphics[width=0.8\textwidth]{pic/example.pdf}
+            \caption{Figure caption}
+        \end{figure}
+    \end{columns}
+\end{frame}
+
+\note[enumerate]{
+    \item Use \textbackslash boxed for mathematical content
+    \item Use makecell for multi-line content
+    \item Figures can be included with \textbackslash includegraphics
+}
+
+\begin{frame}{6. Bibliography}
+    \begin{itemize}
+        \item Citation example\cite{example2023}
+        \item Multiple citations\cite{example2023,example2024}
+    \end{itemize}
+    
+    \begin{center}
+        \large
+        \boxed{Add references in ref.bib}
+    \end{center}
+\end{frame}
+
+\note[enumerate]{
+    \item Use \textbackslash cite\{key\} for citations
+    \item Add entries in ref.bib
+    \item Run bibtex for bibliography
+}
+
+\begin{frame}{7. Algorithm}
+    \begin{algorithm}[H]
+        \begin{algorithmic}[1]
+            \State \textbf{Input:} $\bm{P}, \bm{Q}$
+            \State \textbf{Output:} $\bm{P}^*$
+            \State $\bm{P}^* \leftarrow \bm{P}$
+            \State $\bm{P}^* \leftarrow \bm{Q}$
+        \end{algorithmic}
+        \caption{Algorithm caption}
+        \label{alg:algorithm}
+    \end{algorithm}
+\end{frame}
+
+\note[enumerate]{
+    \item Use \textbackslash begin\{algorithm\}\[H\] for algorithm
+    \item Use \textbackslash begin\{algorithmic\}\[1\] for algorithm
+    \item Use \textbackslash State for algorithm steps
+}
+
+\begin{frame}{8. Table}
+    \begin{table}[H]
+        \centering
+        \begin{tabular}{ccc}
+            \toprule
+            Header 1 & Header 2 & Header 3 \\
+            \midrule
+            Data 1 & Data 2 & Data 3 \\
+            \bottomrule
+        \end{tabular}
+        \caption{Table caption}
+        \label{tab:table}
+    \end{table}
+\end{frame}
+
+\note[enumerate]{
+    \item Use \textbackslash begin\{table\}\[H\] for table
+    \item Use \textbackslash begin\{tabular\}\{ccc\} for table
+    \item Use \textbackslash toprule, \textbackslash midrule, and \textbackslash bottomrule for table borders
+}
+
+
+
+\begin{frame}{References}
+    \bibliographystyle{plain}
+    \bibliography{ref}
+\end{frame}
+
+\note[enumerate]{
+    \item Use \textbackslash bibliographystyle\{plain\} for bibliography
+    \item Use \textbackslash bibliography\{ref\} for references
+}
+\end{document}
