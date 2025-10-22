@@ -9,10 +9,6 @@
 % \setbeameroption{show only notes}
 % \setbeameroption{show only slides with notes}
 
-% Chinese support
-\usepackage{ctex, hyperref}
-\usepackage[T1]{fontenc}
-
 \input{preamble}
 \algnewcommand\algorithmicinitialize{\textbf{initialize: }}
 \algnewcommand{\Initialize}[1]{\State \algorithmicinitialize #1}
@@ -30,8 +26,8 @@ Template Usage Examples
 \subtitle{
 A demonstration of CUHK Beamer template features
 }
-\institute{
-Your Institute
+\institute[Short Name]{
+Your Institute Name
 }
 \date{\today}
 
@@ -39,11 +35,12 @@ Your Institute
 
 \begin{frame}
     \titlepage
-    % \begin{figure}[htpb]
-    %     \begin{center}
-    %         \includegraphics[width=0.2\linewidth]{pic/CUHKSZ-Logo.pdf}
-    %     \end{center}
-    % \end{figure}
+    \vfill
+    \begin{figure}
+        \begin{center}
+            \includegraphics[width=0.3\linewidth]{pic/STAT_SFO_CU_logo_en_chi_small.png}
+        \end{center}
+    \end{figure}
 \end{frame}
 
 \section{Template Features}
@@ -198,7 +195,7 @@ Your Institute
 
 
 
-\begin{frame}{References}
+\begin{frame}[allowframebreaks]{References}
     \bibliographystyle{plain}
     \bibliography{ref}
 \end{frame}

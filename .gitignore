@@ -54,7 +54,7 @@ Thumbs.db
 # Editor temporary files
 *.sublime-workspace
 *.sublime-project
-.vscode/
+# .vscode/ # avoid autorendering in vscode
 .idea/
 
 # Build directories
